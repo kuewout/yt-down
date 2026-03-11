@@ -32,6 +32,7 @@ Last updated: 2026-03-11
   - `POST /api/playlists/{id}/sync`
   - `yt-dlp --flat-playlist -J`
   - upsert of discovered videos into Postgres
+  - duplicate-entry protection when a playlist snapshot repeats the same `video_id`
 - Sequential download of missing videos is implemented with:
   - `POST /api/playlists/{id}/download-new`
   - `yt-dlp` download execution
@@ -115,11 +116,13 @@ Passed so far:
 - backend Python compile checks
 - initial database migration execution
 - frontend production build
+- duplicate-entry sync fix verified with backend compile check
 
 Still needed:
 
 - browser-level flow verification
 - real playlist sync/download happy-path verification
+- manual verification that playlists containing duplicate video IDs now sync cleanly
 
 ### Planned Commit Checkpoints
 
@@ -237,6 +240,12 @@ Only split into two repos later if deployment, ownership, or release cadence div
 6. Backend runs `yt-dlp` for missing items and updates video rows.
 7. Frontend reads playlist and video state from the API.
 8. Manual rescan can reconcile DB state against the filesystem.
+
+## Current Risk Areas
+
+- Real-world `yt-dlp` payloads are not fully predictable, so playlist ingestion should continue to be treated as hostile input.
+- Sync is now hardened against duplicate `video_id` values within a single playlist snapshot, but it still needs a live verification pass against the failing playlist that triggered the bug.
+- Download and rescan flows are functionally implemented, but browser-level verification is still more important than adding new features.
 
 ## Data Model
 
@@ -828,14 +837,15 @@ Completed:
 - implement yt-dlp wrapper service
 - implement sync service
 - implement download service
+- implement in-memory activity registry
+- add `GET /api/activity`
 - add basic error handling and response models
+- harden playlist sync against duplicate `video_id` entries within one snapshot
 
 TODO:
 
-- implement in-memory activity registry
 - add structured logging
 - add `GET /api/videos/{id}`
-- add `GET /api/activity`
 
 ### Frontend Tasks
 
@@ -852,13 +862,13 @@ Completed:
 - build selected playlist video list
 - improve playlist page responsive layout
 - add library rescan trigger and result display
+- add activity indicator
 
 TODO:
 
 - build dedicated playlist detail view
 - build library overview screen
 - build videos table with filters
-- build activity indicator
 - improve mutation/loading UX
 - add delete confirmation UX
 - verify responsive behavior in a live browser
@@ -878,7 +888,7 @@ TODO:
 - test playlist edit flow in browser
 - test playlist remove flow in browser
 - test rescan flow against real media files
-- verify duplicate videos are not reinserted
+- test sync flow against a playlist containing duplicate video IDs
 - verify downloaded videos are not redownloaded
 - verify delete playlist does not remove files by default
 - verify edited playlist settings affect future downloads
@@ -936,12 +946,13 @@ Recommended defaults:
 These are the clearest next tasks from here, in recommended order:
 
 1. Build a dedicated playlist detail route instead of using the combined management panel.
-2. Build a true library overview page with counts, recent videos, and filters.
-3. Add browser-level end-to-end verification for create, sync, download, edit, delete, activity, and rescan flows.
-4. Add tests for backend services and API routes.
-5. Add settings APIs and a real settings screen.
-6. Improve download UX with clearer failure messages and progress feedback.
-7. Improve moved-file detection beyond the current conservative filename-stem matching.
+2. Add browser-level end-to-end verification for create, sync, download, edit, delete, activity, and rescan flows.
+3. Re-run sync against the previously failing playlist and confirm duplicate-entry handling works live.
+4. Build a true library overview page with counts, recent videos, and filters.
+5. Add tests for backend services and API routes.
+6. Add settings APIs and a real settings screen.
+7. Improve download UX with clearer failure messages and progress feedback.
+8. Improve moved-file detection beyond the current conservative filename-stem matching.
 
 ## Immediate Next TODO
 
@@ -953,6 +964,7 @@ If continuing from this document right now, the recommended next implementation 
    - download new
    - rescan library
    - observe activity updates during operations
+   - verify sync succeeds for a playlist whose `yt-dlp` snapshot repeats a `video_id`
 
 After that:
 
