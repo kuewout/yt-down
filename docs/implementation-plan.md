@@ -63,7 +63,6 @@ Last updated: 2026-03-11
 
 ### Not Started Yet
 
-- Filesystem rescan and reconciliation
 - Activity/status API and runtime progress reporting
 - Dedicated library overview page
 - Dedicated playlist detail route
@@ -408,7 +407,12 @@ Current implementation note:
 
 - `sync` is implemented.
 - `download-new` is implemented.
-- `library/rescan` is planned only, not implemented yet.
+- `library/rescan` is implemented on the backend as `POST /api/library/rescan`.
+- The current rescan behavior is conservative:
+  - keep an existing `local_path` if the file still exists
+  - clear stale paths when files are gone
+  - relink only when a video maps to exactly one filename match from the expected `upload_date + title` stem
+- There is no frontend rescan trigger yet.
 
 ### Videos
 
@@ -690,14 +694,20 @@ Remaining:
 
 ### Milestone 5: Rescan and Reconciliation
 
-Status: not started
+Status: partially completed
+
+Done:
+
+- backend `POST /api/library/rescan` endpoint implemented
+- filesystem scan implemented per tracked playlist folder
+- stale `local_path` values cleared when files are missing
+- conservative file relinking implemented for unambiguous matches
 
 Remaining:
 
-- implement filesystem scan
-- reconcile local files to `videos.local_path`
-- mark missing files
-- support moved-file path refresh
+- frontend rescan action
+- live rescan verification against real files
+- richer moved-file detection beyond conservative stem matching
 
 ## Verification Matrix
 
@@ -715,6 +725,10 @@ Remaining:
 - download-new logic
   - code implemented
   - live happy-path still pending
+- library rescan logic
+  - code implemented
+  - backend compile sanity passed
+  - live happy-path still pending
 - frontend playlist management
   - code implemented
   - browser verification still pending
@@ -725,7 +739,7 @@ Remaining:
 - create -> sync -> view videos flow in browser
 - download-new flow in browser
 - edit/remove playlist flow in browser
-- any rescan behavior
+- rescan behavior against real library files
 
 ## Milestones
 
@@ -780,6 +794,7 @@ The list below is now split into completed work and explicit future TODO items.
 - implement playlist sync with `yt-dlp --flat-playlist -J`
 - implement video listing API
 - implement download of missing videos
+- implement backend library rescan API
 - implement frontend playlist list/create flow
 - implement frontend sync/download actions
 - implement frontend playlist edit/remove actions
@@ -810,11 +825,9 @@ Completed:
 
 TODO:
 
-- implement rescan service
 - implement in-memory activity registry
 - add structured logging
 - add `GET /api/videos/{id}`
-- add `POST /api/library/rescan`
 - add `GET /api/activity`
 
 ### Frontend Tasks
@@ -839,6 +852,7 @@ TODO:
 - build activity indicator
 - improve mutation/loading UX
 - add delete confirmation UX
+- add library rescan trigger and result display
 - add frontend build/typecheck step to routine verification
 
 ### Integration Tasks
@@ -855,7 +869,7 @@ TODO:
 - test download-new flow against a real playlist
 - test playlist edit flow in browser
 - test playlist remove flow in browser
-- test rescan flow
+- test rescan flow against real media files
 - verify duplicate videos are not reinserted
 - verify downloaded videos are not redownloaded
 - verify delete playlist does not remove files by default
@@ -913,11 +927,11 @@ Recommended defaults:
 
 These are the clearest next tasks from here, in recommended order:
 
-1. Implement filesystem rescan and reconciliation.
+1. Add a frontend rescan action and show the returned summary in the UI.
 2. Add runtime activity/progress reporting for sync and download operations.
 3. Build a dedicated playlist detail route instead of using the combined management panel.
 4. Build a true library overview page with counts, recent videos, and filters.
-5. Add browser-level end-to-end verification for create, sync, download, edit, and delete flows.
+5. Add browser-level end-to-end verification for create, sync, download, edit, delete, and rescan flows.
 6. Add tests for backend services and API routes.
 7. Add settings APIs and a real settings screen.
 8. Improve download UX with clearer failure messages and progress feedback.
@@ -926,11 +940,10 @@ These are the clearest next tasks from here, in recommended order:
 
 If continuing from this document right now, the recommended next implementation item is:
 
-1. `POST /api/library/rescan`
-   - scan `MEDIA_ROOT`
-   - reconcile files with tracked playlists and videos
-   - update `local_path` and `downloaded`
-   - keep matching conservative
+1. frontend support for `POST /api/library/rescan`
+   - add a rescan action
+   - show the returned summary
+   - verify the flow against real library files
 
 After that:
 
