@@ -10,7 +10,9 @@ from app.services.activity import activity_registry
 from app.services.ytdlp import YtDlpError, download_video
 
 
-def download_missing_videos(db: Session, playlist_id: UUID) -> tuple[Playlist, int, int]:
+def download_missing_videos(
+    db: Session, playlist_id: UUID, batch_size: int = 5
+) -> tuple[Playlist, int, int, int]:
     playlist = db.get(Playlist, playlist_id)
     if playlist is None:
         raise ValueError("Playlist not found")
@@ -19,10 +21,12 @@ def download_missing_videos(db: Session, playlist_id: UUID) -> tuple[Playlist, i
         select(Video)
         .where(Video.playlist_id == playlist_id, Video.downloaded.is_(False))
         .order_by(Video.upload_date.asc().nullsfirst(), Video.created_at.asc())
+        .limit(batch_size)
     ).all()
 
     downloaded_count = 0
     failed_count = 0
+    attempted_count = len(missing_videos)
     output_dir = Path(playlist.folder_path)
     output_dir.mkdir(parents=True, exist_ok=True)
     output_template = str(output_dir / "%(upload_date)s %(title)s.%(ext)s")
@@ -32,7 +36,7 @@ def download_missing_videos(db: Session, playlist_id: UUID) -> tuple[Playlist, i
         playlist_id=playlist.id,
         playlist_title=playlist.title,
         message="Preparing downloads",
-        items_total=len(missing_videos),
+        items_total=attempted_count,
     )
     try:
         for index, video in enumerate(missing_videos, start=1):
@@ -50,6 +54,8 @@ def download_missing_videos(db: Session, playlist_id: UUID) -> tuple[Playlist, i
                     resolution_limit=playlist.resolution_limit,
                 )
             except YtDlpError as exc:
+                video.downloaded = False
+                video.local_path = None
                 video.download_error = str(exc)
                 failed_count += 1
                 activity_registry.update(
@@ -76,7 +82,7 @@ def download_missing_videos(db: Session, playlist_id: UUID) -> tuple[Playlist, i
         raise
 
     activity_registry.complete(
-        message=f"Downloaded {downloaded_count} videos, failed {failed_count}",
-        items_completed=len(missing_videos),
+        message=f"Attempted {attempted_count} downloads: {downloaded_count} succeeded, {failed_count} failed",
+        items_completed=attempted_count,
     )
-    return playlist, downloaded_count, failed_count
+    return playlist, downloaded_count, failed_count, attempted_count

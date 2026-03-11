@@ -86,6 +86,7 @@ export type SyncPlaylistResponse = {
 export type DownloadNewResponse = {
   playlist_id: string;
   title: string;
+  attempted_videos: number;
   downloaded_videos: number;
   failed_videos: number;
 };
@@ -110,7 +111,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   });
   if (!response.ok) {
-    throw new Error(`API request failed: ${response.status}`);
+    let message = `API request failed: ${response.status}`;
+    try {
+      const payload = (await response.json()) as { detail?: string };
+      if (payload.detail) {
+        message = payload.detail;
+      }
+    } catch {
+      // Keep the status-based fallback when the response is not JSON.
+    }
+    throw new Error(message);
   }
 
   if (response.status === 204) {
@@ -151,9 +161,13 @@ export async function fetchPlaylistVideos(playlistId: string): Promise<VideoList
   return request<VideoListResponse>(`/playlists/${playlistId}/videos`);
 }
 
-export async function downloadNewVideos(playlistId: string): Promise<DownloadNewResponse> {
+export async function downloadNewVideos(
+  playlistId: string,
+  batchSize: number,
+): Promise<DownloadNewResponse> {
   return request<DownloadNewResponse>(`/playlists/${playlistId}/download-new`, {
     method: "POST",
+    body: JSON.stringify({ batch_size: batchSize }),
   });
 }
 

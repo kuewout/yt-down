@@ -28,9 +28,11 @@ const initialFormState: FormState = {
   title: "",
   folder_name: "",
   folder_path: "",
-  cookies_browser: "chrome",
+  cookies_browser: "",
   resolution_limit: "1440",
 };
+
+const batchSizeOptions = [5, 10, 25, 50];
 
 const detailTabs: Array<{ key: DetailTab; label: string }> = [
   { key: "overview", label: "Overview" },
@@ -52,10 +54,13 @@ export function PlaylistsPage() {
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<DetailTab>("overview");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [downloadBatchSize, setDownloadBatchSize] = useState("5");
   const selectedVideos = usePlaylistVideos(selectedPlaylistId);
   const selectedPlaylist = data?.items.find((playlist) => playlist.id === selectedPlaylistId) ?? null;
   const playlistCount = data?.items.length ?? 0;
   const downloadedCount = selectedVideos.data?.items.filter((video) => video.downloaded).length ?? 0;
+  const failedCount =
+    selectedVideos.data?.items.filter((video) => !video.downloaded && Boolean(video.download_error)).length ?? 0;
   const missingCount = (selectedVideos.data?.items.length ?? 0) - downloadedCount;
 
   useEffect(() => {
@@ -277,7 +282,10 @@ export function PlaylistsPage() {
                       onClick={() => {
                         setSelectedPlaylistId(playlist.id);
                         setActiveTab("overview");
-                        downloadNewVideos.mutate(playlist.id);
+                        downloadNewVideos.mutate({
+                          playlistId: playlist.id,
+                          batchSize: Number(downloadBatchSize),
+                        });
                       }}
                     >
                       {downloadNewVideos.isPending && selectedPlaylistId === playlist.id
@@ -310,7 +318,8 @@ export function PlaylistsPage() {
           )}
           {downloadNewVideos.data && (
             <p className="hint">
-              Downloaded {downloadNewVideos.data.downloaded_videos} videos, failed {downloadNewVideos.data.failed_videos}.
+              Attempted {downloadNewVideos.data.attempted_videos}: downloaded {downloadNewVideos.data.downloaded_videos},
+              failed {downloadNewVideos.data.failed_videos}.
             </p>
           )}
         </section>
@@ -344,13 +353,37 @@ export function PlaylistsPage() {
                   className="secondary-button"
                   type="button"
                   disabled={downloadNewVideos.isPending}
-                  onClick={() => downloadNewVideos.mutate(selectedPlaylist.id)}
+                  onClick={() =>
+                    downloadNewVideos.mutate({
+                      playlistId: selectedPlaylist.id,
+                      batchSize: Number(downloadBatchSize),
+                    })
+                  }
                 >
                   {downloadNewVideos.isPending ? "Downloading..." : "Download new"}
                 </button>
                 <button className="secondary-button" type="button" onClick={() => setActiveTab("settings")}>
                   Open settings
                 </button>
+              </div>
+
+              <div className="download-batch-row">
+                <label>
+                  Batch size
+                  <select
+                    value={downloadBatchSize}
+                    onChange={(event) => setDownloadBatchSize(event.target.value)}
+                  >
+                    {batchSizeOptions.map((option) => (
+                      <option key={option} value={option.toString()}>
+                        {option} videos
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <p className="hint">
+                  Each run attempts at most {downloadBatchSize} missing videos for this playlist.
+                </p>
               </div>
 
               <div className="tab-row" role="tablist" aria-label="Playlist detail sections">
@@ -383,6 +416,10 @@ export function PlaylistsPage() {
                       <span className="status-label">Missing</span>
                       <strong>{missingCount}</strong>
                     </article>
+                    <article className="summary-card">
+                      <span className="status-label">Failed</span>
+                      <strong>{failedCount}</strong>
+                    </article>
                   </section>
                   <section className="overview-note">
                     <span className="status-label">Focus mode</span>
@@ -411,9 +448,14 @@ export function PlaylistsPage() {
                             <p className="card-meta">
                               {video.upload_date ?? "Unknown date"} · {video.video_id}
                             </p>
+                            {video.download_error && <p className="error-text compact-error">{video.download_error}</p>}
                           </div>
-                          <span className={`pill video-status ${video.downloaded ? "downloaded-pill" : ""}`}>
-                            {video.downloaded ? "Downloaded" : "Missing"}
+                          <span
+                            className={`pill video-status ${
+                              video.downloaded ? "downloaded-pill" : video.download_error ? "failed-pill" : ""
+                            }`}
+                          >
+                            {video.downloaded ? "Downloaded" : video.download_error ? "Failed" : "Missing"}
                           </span>
                         </article>
                       ))

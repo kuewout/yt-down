@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Last updated: 2026-03-11
+Last updated: 2026-03-12
 
 ### Completed
 
@@ -35,7 +35,10 @@ Last updated: 2026-03-11
   - duplicate-entry protection when a playlist snapshot repeats the same `video_id`
 - Sequential download of missing videos is implemented with:
   - `POST /api/playlists/{id}/download-new`
+  - request-level batch size, defaulting to 5 videos per run
   - `yt-dlp` download execution
+  - safer format selection using combined video/audio fallbacks
+  - retry without browser cookies if a cookie-backed attempt fails
   - persisted `downloaded`, `downloaded_at`, `local_path`, `download_error`
 - Lightweight runtime activity reporting is implemented with:
   - in-memory registry in the API process
@@ -49,6 +52,7 @@ Last updated: 2026-03-11
   - select a playlist and view discovered videos
   - trigger sync
   - trigger download of missing videos
+  - choose a download batch size before starting a run
   - poll and display current or latest backend activity
   - edit playlist settings
   - remove a playlist from tracking
@@ -57,6 +61,7 @@ Last updated: 2026-03-11
   - URL-first flow
   - optional title/folder input
   - derived folder name and path defaults
+  - no default browser-cookie setting for newly added playlists
 
 ### Implemented But Not Fully Verified End-to-End
 
@@ -246,6 +251,7 @@ Only split into two repos later if deployment, ownership, or release cadence div
 - Real-world `yt-dlp` payloads are not fully predictable, so playlist ingestion should continue to be treated as hostile input.
 - Sync is now hardened against duplicate `video_id` values within a single playlist snapshot, but it still needs a live verification pass against the failing playlist that triggered the bug.
 - Download and rescan flows are functionally implemented, but browser-level verification is still more important than adding new features.
+- Existing playlists that were previously saved with `cookies_browser = chrome` may still need manual cleanup in the UI if the automatic retry path is not sufficient.
 
 ## Data Model
 

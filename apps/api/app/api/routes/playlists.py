@@ -17,8 +17,13 @@ from app.services.playlists import (
     sync_playlist,
 )
 from app.schemas.video import VideoListResponse, VideoRead
+from pydantic import BaseModel, Field
 
 router = APIRouter()
+
+
+class DownloadNewRequest(BaseModel):
+    batch_size: int = Field(default=5, ge=1, le=100)
 
 
 @router.get("", response_model=PlaylistListResponse)
@@ -108,9 +113,15 @@ def sync_playlist_route(playlist_id: UUID, db: Session = Depends(get_db)) -> dic
 
 
 @router.post("/{playlist_id}/download-new")
-def download_new_videos_route(playlist_id: UUID, db: Session = Depends(get_db)) -> dict[str, str | int]:
+def download_new_videos_route(
+    playlist_id: UUID,
+    payload: DownloadNewRequest,
+    db: Session = Depends(get_db),
+) -> dict[str, str | int]:
     try:
-        playlist, downloaded_count, failed_count = download_missing_videos(db, playlist_id)
+        playlist, downloaded_count, failed_count, attempted_count = download_missing_videos(
+            db, playlist_id, batch_size=payload.batch_size
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except YtDlpError as exc:
@@ -120,6 +131,7 @@ def download_new_videos_route(playlist_id: UUID, db: Session = Depends(get_db)) 
     return {
         "playlist_id": str(playlist.id),
         "title": playlist.title,
+        "attempted_videos": attempted_count,
         "downloaded_videos": downloaded_count,
         "failed_videos": failed_count,
     }

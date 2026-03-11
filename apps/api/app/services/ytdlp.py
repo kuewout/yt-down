@@ -32,6 +32,26 @@ class DownloadResult:
     local_path: str
 
 
+def _build_format_selector(resolution_limit: int | None) -> str:
+    if resolution_limit:
+        return f"bestvideo*[height<={resolution_limit}]+bestaudio/best[height<={resolution_limit}]/best"
+
+    return "bestvideo*+bestaudio/best"
+
+
+def _run_yt_dlp_command(cmd: list[str]) -> DownloadResult:
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    if result.returncode != 0:
+        raise YtDlpError(result.stderr.strip() or "yt-dlp failed to download video")
+
+    lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+    local_path = lines[-1] if lines else ""
+    if not local_path:
+        raise YtDlpError("yt-dlp did not report a downloaded file path")
+
+    return DownloadResult(local_path=str(Path(local_path)))
+
+
 def _parse_upload_date(value: str | None) -> datetime | None:
     if not value:
         return None
@@ -87,23 +107,29 @@ def download_video(
     cookies_browser: str | None = None,
     resolution_limit: int | None = None,
 ) -> DownloadResult:
-    cmd = ["yt-dlp", "--no-progress", "--print", "after_move:filepath"]
+    base_cmd = [
+        "yt-dlp",
+        "--no-progress",
+        "--print",
+        "after_move:filepath",
+        "-f",
+        _build_format_selector(resolution_limit),
+        "-o",
+        output_template,
+        url,
+    ]
     if cookies_browser:
-        cmd.extend(["--cookies-from-browser", cookies_browser])
+        try:
+            return _run_yt_dlp_command(
+                ["yt-dlp", "--no-progress", "--print", "after_move:filepath", "--cookies-from-browser", cookies_browser]
+                + ["-f", _build_format_selector(resolution_limit), "-o", output_template, url]
+            )
+        except YtDlpError as exc:
+            try:
+                return _run_yt_dlp_command(base_cmd)
+            except YtDlpError:
+                raise YtDlpError(
+                    f"{exc} | retry without cookies also failed"
+                ) from exc
 
-    if resolution_limit:
-        cmd.extend(["-f", f"best[height<={resolution_limit}]"])
-    else:
-        cmd.extend(["-f", "bestvideo+bestaudio/best"])
-
-    cmd.extend(["-o", output_template, url])
-    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-    if result.returncode != 0:
-        raise YtDlpError(result.stderr.strip() or "yt-dlp failed to download video")
-
-    lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
-    local_path = lines[-1] if lines else ""
-    if not local_path:
-        raise YtDlpError("yt-dlp did not report a downloaded file path")
-
-    return DownloadResult(local_path=str(Path(local_path)))
+    return _run_yt_dlp_command(base_cmd)

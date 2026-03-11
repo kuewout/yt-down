@@ -403,6 +403,33 @@ a {
   flex: 1 1 150px;
 }
 
+.download-batch-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: end;
+}
+
+.download-batch-row label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.download-batch-row select {
+  min-height: 46px;
+  padding: 12px 14px;
+  border: 1px solid rgba(53, 44, 34, 0.14);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--ink);
+  font: inherit;
+}
+
+.download-batch-row .hint {
+  margin: 0;
+}
+
 .tab-row {
   display: flex;
   gap: 10px;
@@ -433,7 +460,7 @@ a {
 
 .overview-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px;
 }
 
@@ -483,9 +510,20 @@ a {
   flex-shrink: 0;
 }
 
+.compact-error {
+  margin: 8px 0 0;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
 .downloaded-pill {
   background: rgba(20, 83, 45, 0.14);
   color: #166534;
+}
+
+.failed-pill {
+  background: rgba(190, 24, 93, 0.14);
+  color: #9f1239;
 }
 
 .modal-backdrop {
@@ -564,7 +602,8 @@ a {
   .toolbar-row,
   .playlist-rail-header,
   .playlist-rail-actions,
-  .modal-header {
+  .modal-header,
+  .download-batch-row {
     flex-direction: column;
   }
 
