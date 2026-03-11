@@ -40,6 +40,7 @@ export function PlaylistsPage() {
   const selectedVideos = usePlaylistVideos(selectedPlaylistId);
   const selectedPlaylist = data?.items.find((playlist) => playlist.id === selectedPlaylistId) ?? null;
   const [editForm, setEditForm] = useState<FormState>(initialFormState);
+  const playlistCount = data?.items.length ?? 0;
 
   useEffect(() => {
     if (!selectedPlaylist) {
@@ -113,12 +114,23 @@ export function PlaylistsPage() {
 
   return (
     <div className="split-layout">
-      <section className="panel">
+      <section className="panel panel-spacious">
         <div className="eyebrow">Tracked playlists</div>
         <h1>Playlists</h1>
         <p className="lede">
-          Create playlist records now; sync and download actions are the next backend slice.
+          Track subscribed channels, sync for new uploads, and pull missing videos into your local
+          library.
         </p>
+        <div className="summary-strip">
+          <article className="summary-card">
+            <span className="status-label">Tracked</span>
+            <strong>{playlistCount}</strong>
+          </article>
+          <article className="summary-card">
+            <span className="status-label">Selected</span>
+            <strong>{selectedPlaylist ? selectedPlaylist.title : "None"}</strong>
+          </article>
+        </div>
         {isLoading && <p className="hint">Loading playlists...</p>}
         {isError && (
           <p className="error-text">
@@ -141,7 +153,7 @@ export function PlaylistsPage() {
                 <h2>{playlist.title}</h2>
                 <p className="card-meta">{playlist.folder_path}</p>
                 <p className="card-link">{playlist.source_url}</p>
-                <div className="card-actions">
+                <div className="card-actions card-actions-wrap">
                   <button
                     className="secondary-button"
                     type="button"
@@ -208,64 +220,66 @@ export function PlaylistsPage() {
         )}
       </section>
 
-      <section className="panel">
+      <section className="panel panel-spacious">
         <div className="eyebrow">New playlist</div>
         <h1>Add Playlist</h1>
         <form className="playlist-form" onSubmit={handleSubmit}>
-          <label>
-            Playlist URL
-            <input
-              required
-              type="url"
-              value={form.source_url}
-              onChange={(event) => updateField("source_url", event.target.value)}
-            />
-          </label>
-          <label>
-            Display title
-            <input
-              placeholder="Optional before first sync"
-              value={form.title}
-              onChange={(event) => updateField("title", event.target.value)}
-            />
-          </label>
-          <label>
-            Folder name
-            <input
-              placeholder="Optional, derived from playlist URL"
-              value={form.folder_name}
-              onChange={(event) => updateField("folder_name", event.target.value)}
-            />
-          </label>
-          <label>
-            Folder path
-            <input
-              placeholder="Optional, defaults to MEDIA_ROOT/folder_name"
-              value={form.folder_path}
-              onChange={(event) => updateField("folder_path", event.target.value)}
-            />
-          </label>
-          <label>
-            Cookies browser
-            <input
-              value={form.cookies_browser}
-              onChange={(event) => updateField("cookies_browser", event.target.value)}
-            />
-          </label>
-          <label>
-            Resolution limit
-            <select
-              value={form.resolution_limit}
-              onChange={(event) => updateField("resolution_limit", event.target.value)}
-            >
-              <option value="">Best available</option>
-              <option value="1440">1440p</option>
-              <option value="1080">1080p</option>
-              <option value="720">720p</option>
-              <option value="480">480p</option>
-              <option value="360">360p</option>
-            </select>
-          </label>
+          <div className="field-grid">
+            <label className="field-span-full">
+              Playlist URL
+              <input
+                required
+                type="url"
+                value={form.source_url}
+                onChange={(event) => updateField("source_url", event.target.value)}
+              />
+            </label>
+            <label>
+              Display title
+              <input
+                placeholder="Optional before first sync"
+                value={form.title}
+                onChange={(event) => updateField("title", event.target.value)}
+              />
+            </label>
+            <label>
+              Folder name
+              <input
+                placeholder="Optional, derived from playlist URL"
+                value={form.folder_name}
+                onChange={(event) => updateField("folder_name", event.target.value)}
+              />
+            </label>
+            <label className="field-span-full">
+              Folder path
+              <input
+                placeholder="Optional, defaults to MEDIA_ROOT/folder_name"
+                value={form.folder_path}
+                onChange={(event) => updateField("folder_path", event.target.value)}
+              />
+            </label>
+            <label>
+              Cookies browser
+              <input
+                value={form.cookies_browser}
+                onChange={(event) => updateField("cookies_browser", event.target.value)}
+              />
+            </label>
+            <label>
+              Resolution limit
+              <select
+                value={form.resolution_limit}
+                onChange={(event) => updateField("resolution_limit", event.target.value)}
+              >
+                <option value="">Best available</option>
+                <option value="1440">1440p</option>
+                <option value="1080">1080p</option>
+                <option value="720">720p</option>
+                <option value="480">480p</option>
+                <option value="360">360p</option>
+              </select>
+            </label>
+          </div>
           <button className="primary-button" type="submit" disabled={createPlaylist.isPending}>
             {createPlaylist.isPending || syncPlaylist.isPending ? "Creating..." : "Create and sync"}
           </button>
@@ -285,49 +299,56 @@ export function PlaylistsPage() {
           </h2>
           {selectedPlaylist ? (
             <form className="playlist-form compact-form" onSubmit={handleUpdateSelectedPlaylist}>
-              <label>
-                Title
-                <input
-                  value={editForm.title}
-                  onChange={(event) => updateEditField("title", event.target.value)}
-                />
-              </label>
-              <label>
-                Folder name
-                <input
-                  value={editForm.folder_name}
-                  onChange={(event) => updateEditField("folder_name", event.target.value)}
-                />
-              </label>
-              <label>
-                Folder path
-                <input
-                  value={editForm.folder_path}
-                  onChange={(event) => updateEditField("folder_path", event.target.value)}
-                />
-              </label>
-              <label>
-                Cookies browser
-                <input
-                  value={editForm.cookies_browser}
-                  onChange={(event) => updateEditField("cookies_browser", event.target.value)}
-                />
-              </label>
-              <label>
-                Resolution limit
-                <select
-                  value={editForm.resolution_limit}
-                  onChange={(event) => updateEditField("resolution_limit", event.target.value)}
-                >
-                  <option value="">Best available</option>
-                  <option value="1440">1440p</option>
-                  <option value="1080">1080p</option>
-                  <option value="720">720p</option>
-                  <option value="480">480p</option>
-                  <option value="360">360p</option>
-                </select>
-              </label>
-              <div className="card-actions">
+              <div className="selected-summary">
+                <strong>{selectedPlaylist.title}</strong>
+                <p className="card-meta">{selectedPlaylist.folder_path}</p>
+                <p className="card-link">{selectedPlaylist.source_url}</p>
+              </div>
+              <div className="field-grid">
+                <label>
+                  Title
+                  <input
+                    value={editForm.title}
+                    onChange={(event) => updateEditField("title", event.target.value)}
+                  />
+                </label>
+                <label>
+                  Folder name
+                  <input
+                    value={editForm.folder_name}
+                    onChange={(event) => updateEditField("folder_name", event.target.value)}
+                  />
+                </label>
+                <label className="field-span-full">
+                  Folder path
+                  <input
+                    value={editForm.folder_path}
+                    onChange={(event) => updateEditField("folder_path", event.target.value)}
+                  />
+                </label>
+                <label>
+                  Cookies browser
+                  <input
+                    value={editForm.cookies_browser}
+                    onChange={(event) => updateEditField("cookies_browser", event.target.value)}
+                  />
+                </label>
+                <label>
+                  Resolution limit
+                  <select
+                    value={editForm.resolution_limit}
+                    onChange={(event) => updateEditField("resolution_limit", event.target.value)}
+                  >
+                    <option value="">Best available</option>
+                    <option value="1440">1440p</option>
+                    <option value="1080">1080p</option>
+                    <option value="720">720p</option>
+                    <option value="480">480p</option>
+                    <option value="360">360p</option>
+                  </select>
+                </label>
+              </div>
+              <div className="card-actions card-actions-wrap">
                 <button className="primary-button" type="submit" disabled={updatePlaylist.isPending}>
                   {updatePlaylist.isPending ? "Saving..." : "Save settings"}
                 </button>
@@ -377,13 +398,13 @@ export function PlaylistsPage() {
             {selectedVideos.data?.items.length ? (
               selectedVideos.data.items.map((video) => (
                 <article className="video-row" key={video.id}>
-                  <div>
+                  <div className="video-row-main">
                     <strong>{video.title}</strong>
                     <p className="card-meta">
                       {video.upload_date ?? "Unknown date"} · {video.video_id}
                     </p>
                   </div>
-                  <span className={`pill ${video.downloaded ? "downloaded-pill" : ""}`}>
+                  <span className={`pill video-status ${video.downloaded ? "downloaded-pill" : ""}`}>
                     {video.downloaded ? "Downloaded" : "Missing"}
                   </span>
                 </article>

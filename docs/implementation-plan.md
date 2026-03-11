@@ -107,10 +107,10 @@ Passed so far:
 
 - backend Python compile checks
 - initial database migration execution
+- frontend production build
 
 Still needed:
 
-- frontend build/type verification
 - browser-level flow verification
 - real playlist sync/download happy-path verification
 
@@ -668,12 +668,13 @@ Done:
 - Vite React app scaffolded
 - playlists screen implemented
 - synced video list can be viewed for selected playlist
+- playlist page responsive layout improved for tablet and mobile widths
 
 Remaining:
 
 - separate playlist detail route
 - richer library overview page
-- frontend build/type verification documented in this plan cycle
+- browser-level responsive verification documented in this plan cycle
 
 ### Milestone 4: Download Path
 
@@ -716,6 +717,7 @@ Remaining:
 - backend module import/compile sanity
 - Alembic migration to Postgres
 - route inventory and doc alignment for implemented playlist/video endpoints
+- frontend build/typecheck via `pnpm build`
 
 ### Partially Verified
 
@@ -735,10 +737,10 @@ Remaining:
 
 ### Not Verified Yet
 
-- frontend build/typecheck
 - create -> sync -> view videos flow in browser
 - download-new flow in browser
 - edit/remove playlist flow in browser
+- responsive behavior in a live browser
 - rescan behavior against real library files
 
 ## Milestones
@@ -843,6 +845,7 @@ Completed:
 - build add playlist form
 - build edit playlist form
 - build selected playlist video list
+- improve playlist page responsive layout
 
 TODO:
 
@@ -853,7 +856,7 @@ TODO:
 - improve mutation/loading UX
 - add delete confirmation UX
 - add library rescan trigger and result display
-- add frontend build/typecheck step to routine verification
+- verify responsive behavior in a live browser
 
 ### Integration Tasks
 
