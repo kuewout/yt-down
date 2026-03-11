@@ -42,7 +42,7 @@ export function PlaylistsPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    await createPlaylist.mutateAsync({
+    const created = await createPlaylist.mutateAsync({
       source_url: form.source_url.trim(),
       title: form.title.trim(),
       folder_name: form.folder_name.trim(),
@@ -52,7 +52,8 @@ export function PlaylistsPage() {
       active: true,
       playlist_id: null,
     });
-
+    setSelectedPlaylistId(created.id);
+    await syncPlaylist.mutateAsync(created.id);
     setForm(initialFormState);
   }
 
@@ -169,7 +170,7 @@ export function PlaylistsPage() {
           <label>
             Display title
             <input
-              required
+              placeholder="Optional before first sync"
               value={form.title}
               onChange={(event) => updateField("title", event.target.value)}
             />
@@ -177,7 +178,7 @@ export function PlaylistsPage() {
           <label>
             Folder name
             <input
-              required
+              placeholder="Optional, derived from playlist URL"
               value={form.folder_name}
               onChange={(event) => updateField("folder_name", event.target.value)}
             />
@@ -185,7 +186,7 @@ export function PlaylistsPage() {
           <label>
             Folder path
             <input
-              required
+              placeholder="Optional, defaults to MEDIA_ROOT/folder_name"
               value={form.folder_path}
               onChange={(event) => updateField("folder_path", event.target.value)}
             />
@@ -212,7 +213,7 @@ export function PlaylistsPage() {
             </select>
           </label>
           <button className="primary-button" type="submit" disabled={createPlaylist.isPending}>
-            {createPlaylist.isPending ? "Saving..." : "Create playlist"}
+            {createPlaylist.isPending || syncPlaylist.isPending ? "Creating..." : "Create and sync"}
           </button>
           {createPlaylist.isError && (
             <p className="error-text">

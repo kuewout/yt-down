@@ -9,7 +9,13 @@ from app.db.session import get_db
 from app.models import Playlist
 from app.schemas import PlaylistCreate, PlaylistListResponse, PlaylistRead, PlaylistUpdate
 from app.services.downloads import download_missing_videos
-from app.services.playlists import YtDlpError, build_folder_path, list_playlist_videos, sync_playlist
+from app.services.playlists import (
+    YtDlpError,
+    build_folder_path,
+    derive_folder_name,
+    list_playlist_videos,
+    sync_playlist,
+)
 from app.schemas.video import VideoListResponse, VideoRead
 
 router = APIRouter()
@@ -24,8 +30,12 @@ def list_playlists(db: Session = Depends(get_db)) -> PlaylistListResponse:
 @router.post("", response_model=PlaylistRead, status_code=status.HTTP_201_CREATED)
 def create_playlist(payload: PlaylistCreate, db: Session = Depends(get_db)) -> PlaylistRead:
     data = payload.model_dump()
+    if not data["folder_name"]:
+        data["folder_name"] = derive_folder_name(data["source_url"])
     if not data["folder_path"]:
         data["folder_path"] = build_folder_path(data["folder_name"])
+    if not data["title"]:
+        data["title"] = data["folder_name"]
 
     playlist = Playlist(**data)
     db.add(playlist)

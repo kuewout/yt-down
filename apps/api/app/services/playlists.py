@@ -1,5 +1,7 @@
 from datetime import UTC, datetime
 from pathlib import Path
+import re
+from urllib.parse import parse_qs, urlparse
 from uuid import UUID
 
 from sqlalchemy import select
@@ -12,6 +14,18 @@ from app.services.ytdlp import PlaylistSnapshot, YtDlpError, fetch_flat_playlist
 
 def build_folder_path(folder_name: str) -> str:
     return str(Path(settings.media_root).joinpath(folder_name))
+
+
+def derive_folder_name(source_url: str) -> str:
+    parsed = urlparse(source_url)
+    query = parse_qs(parsed.query)
+    candidate = query.get("list", [None])[0]
+    if not candidate:
+        path_parts = [part for part in parsed.path.split("/") if part]
+        candidate = path_parts[-1] if path_parts else parsed.netloc or "playlist"
+
+    slug = re.sub(r"[^A-Za-z0-9_-]+", "-", candidate).strip("-_").lower()
+    return slug or "playlist"
 
 
 def sync_playlist(db: Session, playlist_id: UUID) -> tuple[Playlist, int]:
@@ -75,4 +89,10 @@ def list_playlist_videos(db: Session, playlist_id: UUID) -> list[Video]:
     ).all()
 
 
-__all__ = ["YtDlpError", "build_folder_path", "list_playlist_videos", "sync_playlist"]
+__all__ = [
+    "YtDlpError",
+    "build_folder_path",
+    "derive_folder_name",
+    "list_playlist_videos",
+    "sync_playlist",
+]
