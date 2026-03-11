@@ -74,6 +74,8 @@ def _upsert_playlist_entries(db: Session, playlist: Playlist, snapshot: Playlist
     now = datetime.now(UTC)
 
     for entry in snapshot.entries:
+        # yt-dlp flat playlist results can contain duplicate video IDs.
+        # Treat later occurrences as metadata refreshes for the same row.
         video = existing_videos.get(entry.video_id)
         if video is None:
             video = Video(
@@ -88,8 +90,10 @@ def _upsert_playlist_entries(db: Session, playlist: Playlist, snapshot: Playlist
                 last_seen_at=now,
             )
             db.add(video)
+            existing_videos[entry.video_id] = video
             created_count += 1
-            continue
+        else:
+            video.last_seen_at = now
 
         video.title = entry.title
         video.upload_date = entry.upload_date.date() if entry.upload_date else video.upload_date
@@ -97,7 +101,6 @@ def _upsert_playlist_entries(db: Session, playlist: Playlist, snapshot: Playlist
         video.webpage_url = entry.webpage_url
         video.thumbnail_url = entry.thumbnail_url
         video.metadata_json = entry.metadata_json
-        video.last_seen_at = now
 
     return created_count
 
