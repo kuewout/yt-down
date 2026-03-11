@@ -58,6 +58,8 @@ export type CreatePlaylistInput = {
   playlist_id?: string | null;
 };
 
+export type UpdatePlaylistInput = Partial<CreatePlaylistInput>;
+
 export type SyncPlaylistResponse = {
   playlist_id: string;
   title: string;
@@ -85,6 +87,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!response.ok) {
     throw new Error(`API request failed: ${response.status}`);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
   }
 
   return (await response.json()) as T;
@@ -120,5 +126,21 @@ export async function fetchPlaylistVideos(playlistId: string): Promise<VideoList
 export async function downloadNewVideos(playlistId: string): Promise<DownloadNewResponse> {
   return request<DownloadNewResponse>(`/playlists/${playlistId}/download-new`, {
     method: "POST",
+  });
+}
+
+export async function updatePlaylist(
+  playlistId: string,
+  input: UpdatePlaylistInput,
+): Promise<Playlist> {
+  return request<Playlist>(`/playlists/${playlistId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deletePlaylist(playlistId: string): Promise<void> {
+  await request<void>(`/playlists/${playlistId}`, {
+    method: "DELETE",
   });
 }

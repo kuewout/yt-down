@@ -1,11 +1,13 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 import {
   useCreatePlaylist,
+  useDeletePlaylist,
   useDownloadNewVideos,
   usePlaylistVideos,
   usePlaylists,
   useSyncPlaylist,
+  useUpdatePlaylist,
 } from "./use-playlists";
 
 type FormState = {
@@ -31,12 +33,36 @@ export function PlaylistsPage() {
   const createPlaylist = useCreatePlaylist();
   const syncPlaylist = useSyncPlaylist();
   const downloadNewVideos = useDownloadNewVideos();
+  const updatePlaylist = useUpdatePlaylist();
+  const deletePlaylist = useDeletePlaylist();
   const [form, setForm] = useState<FormState>(initialFormState);
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
   const selectedVideos = usePlaylistVideos(selectedPlaylistId);
+  const selectedPlaylist = data?.items.find((playlist) => playlist.id === selectedPlaylistId) ?? null;
+  const [editForm, setEditForm] = useState<FormState>(initialFormState);
+
+  useEffect(() => {
+    if (!selectedPlaylist) {
+      setEditForm(initialFormState);
+      return;
+    }
+
+    setEditForm({
+      source_url: selectedPlaylist.source_url,
+      title: selectedPlaylist.title,
+      folder_name: selectedPlaylist.folder_name,
+      folder_path: selectedPlaylist.folder_path,
+      cookies_browser: selectedPlaylist.cookies_browser ?? "",
+      resolution_limit: selectedPlaylist.resolution_limit?.toString() ?? "",
+    });
+  }, [selectedPlaylist]);
 
   function updateField<K extends keyof FormState>(field: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateEditField<K extends keyof FormState>(field: K, value: FormState[K]) {
+    setEditForm((current) => ({ ...current, [field]: value }));
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -55,6 +81,34 @@ export function PlaylistsPage() {
     setSelectedPlaylistId(created.id);
     await syncPlaylist.mutateAsync(created.id);
     setForm(initialFormState);
+  }
+
+  async function handleUpdateSelectedPlaylist(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedPlaylistId) {
+      return;
+    }
+
+    await updatePlaylist.mutateAsync({
+      playlistId: selectedPlaylistId,
+      input: {
+        title: editForm.title.trim(),
+        folder_name: editForm.folder_name.trim(),
+        folder_path: editForm.folder_path.trim() || undefined,
+        cookies_browser: editForm.cookies_browser.trim() || null,
+        resolution_limit: editForm.resolution_limit ? Number(editForm.resolution_limit) : null,
+        active: selectedPlaylist?.active ?? true,
+      },
+    });
+  }
+
+  async function handleDeleteSelectedPlaylist() {
+    if (!selectedPlaylistId) {
+      return;
+    }
+
+    await deletePlaylist.mutateAsync(selectedPlaylistId);
+    setSelectedPlaylistId(null);
   }
 
   return (
@@ -224,6 +278,89 @@ export function PlaylistsPage() {
             </p>
           )}
         </form>
+        <div className="video-section">
+          <div className="eyebrow">Selected playlist</div>
+          <h2 className="section-title">
+            {selectedPlaylist ? "Manage playlist" : "Select a playlist"}
+          </h2>
+          {selectedPlaylist ? (
+            <form className="playlist-form compact-form" onSubmit={handleUpdateSelectedPlaylist}>
+              <label>
+                Title
+                <input
+                  value={editForm.title}
+                  onChange={(event) => updateEditField("title", event.target.value)}
+                />
+              </label>
+              <label>
+                Folder name
+                <input
+                  value={editForm.folder_name}
+                  onChange={(event) => updateEditField("folder_name", event.target.value)}
+                />
+              </label>
+              <label>
+                Folder path
+                <input
+                  value={editForm.folder_path}
+                  onChange={(event) => updateEditField("folder_path", event.target.value)}
+                />
+              </label>
+              <label>
+                Cookies browser
+                <input
+                  value={editForm.cookies_browser}
+                  onChange={(event) => updateEditField("cookies_browser", event.target.value)}
+                />
+              </label>
+              <label>
+                Resolution limit
+                <select
+                  value={editForm.resolution_limit}
+                  onChange={(event) => updateEditField("resolution_limit", event.target.value)}
+                >
+                  <option value="">Best available</option>
+                  <option value="1440">1440p</option>
+                  <option value="1080">1080p</option>
+                  <option value="720">720p</option>
+                  <option value="480">480p</option>
+                  <option value="360">360p</option>
+                </select>
+              </label>
+              <div className="card-actions">
+                <button className="primary-button" type="submit" disabled={updatePlaylist.isPending}>
+                  {updatePlaylist.isPending ? "Saving..." : "Save settings"}
+                </button>
+                <button
+                  className="danger-button"
+                  type="button"
+                  disabled={deletePlaylist.isPending}
+                  onClick={handleDeleteSelectedPlaylist}
+                >
+                  {deletePlaylist.isPending ? "Removing..." : "Remove playlist"}
+                </button>
+              </div>
+              {updatePlaylist.isError && (
+                <p className="error-text">
+                  Failed to update playlist:{" "}
+                  {updatePlaylist.error instanceof Error
+                    ? updatePlaylist.error.message
+                    : "Unknown error"}
+                </p>
+              )}
+              {deletePlaylist.isError && (
+                <p className="error-text">
+                  Failed to remove playlist:{" "}
+                  {deletePlaylist.error instanceof Error
+                    ? deletePlaylist.error.message
+                    : "Unknown error"}
+                </p>
+              )}
+            </form>
+          ) : (
+            <p className="hint">Choose a playlist card to edit settings or remove it.</p>
+          )}
+        </div>
         <div className="video-section">
           <div className="eyebrow">Discovered videos</div>
           <h2 className="section-title">

@@ -187,6 +187,10 @@ a {
   margin-top: 24px;
 }
 
+.compact-form {
+  margin-top: 16px;
+}
+
 .playlist-form label {
   display: grid;
   gap: 8px;
@@ -223,7 +227,23 @@ a {
   cursor: pointer;
 }
 
+.danger-button {
+  min-height: 46px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #be123c, #881337);
+  color: white;
+  cursor: pointer;
+}
+
 .primary-button:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.secondary-button:disabled,
+.danger-button:disabled {
   opacity: 0.7;
   cursor: default;
 }

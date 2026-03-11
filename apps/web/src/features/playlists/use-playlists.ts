@@ -2,11 +2,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   createPlaylist,
+  deletePlaylist,
   downloadNewVideos,
   fetchPlaylistVideos,
   fetchPlaylists,
   syncPlaylist,
   type CreatePlaylistInput,
+  type UpdatePlaylistInput,
+  updatePlaylist,
 } from "../../api/client";
 
 export function usePlaylists() {
@@ -58,6 +61,35 @@ export function useDownloadNewVideos() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["playlists"] }),
         queryClient.invalidateQueries({ queryKey: ["playlist-videos", playlistId] }),
+      ]);
+    },
+  });
+}
+
+export function useUpdatePlaylist() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ playlistId, input }: { playlistId: string; input: UpdatePlaylistInput }) =>
+      updatePlaylist(playlistId, input),
+    onSuccess: async (_, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["playlists"] }),
+        queryClient.invalidateQueries({ queryKey: ["playlist-videos", variables.playlistId] }),
+      ]);
+    },
+  });
+}
+
+export function useDeletePlaylist() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (playlistId: string) => deletePlaylist(playlistId),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["playlists"] }),
+        queryClient.invalidateQueries({ queryKey: ["playlist-videos"] }),
       ]);
     },
   });
