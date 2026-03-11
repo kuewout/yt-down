@@ -2,6 +2,7 @@ import { Link, Route, Routes } from "react-router-dom";
 
 import { fetchHealth } from "./api/client";
 import { useAppHealth } from "./features/health/use-app-health";
+import { PlaylistsPage } from "./features/playlists/playlists-page";
 
 function HomePage() {
   const { data, isLoading, isError } = useAppHealth();
@@ -55,15 +56,7 @@ export function App() {
       <main className="content">
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route
-            path="/playlists"
-            element={
-              <PlaceholderPage
-                title="Playlists"
-                description="This is where playlist CRUD, sync, and download controls will land."
-              />
-            }
-          />
+          <Route path="/playlists" element={<PlaylistsPage />} />
           <Route
             path="/settings"
             element={

@@ -83,6 +83,13 @@ a {
   padding: 36px;
 }
 
+.split-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.9fr);
+  gap: 24px;
+  align-items: start;
+}
+
 .panel {
   max-width: 860px;
   padding: 32px;
@@ -119,8 +126,96 @@ a {
   color: var(--muted);
 }
 
+.error-text {
+  color: #9f1239;
+}
+
+.playlist-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 28px;
+}
+
+.playlist-card {
+  padding: 18px 20px;
+  border: 1px solid var(--panel-border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.playlist-card h2 {
+  margin: 10px 0 8px;
+  font-size: 1.4rem;
+}
+
+.card-topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.pill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.12);
+  color: var(--accent-strong);
+  font-size: 0.85rem;
+}
+
+.card-meta,
+.card-link {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.playlist-form {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.playlist-form label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.playlist-form input,
+.playlist-form select,
+.primary-button {
+  min-height: 46px;
+  padding: 12px 14px;
+  border: 1px solid rgba(53, 44, 34, 0.14);
+  border-radius: 14px;
+  font: inherit;
+}
+
+.playlist-form input,
+.playlist-form select {
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--ink);
+}
+
+.primary-button {
+  border: 0;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: white;
+  cursor: pointer;
+}
+
+.primary-button:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
 @media (max-width: 860px) {
   .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .split-layout {
     grid-template-columns: 1fr;
   }
 
