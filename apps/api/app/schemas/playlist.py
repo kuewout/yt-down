@@ -8,7 +8,7 @@ class PlaylistBase(BaseModel):
     source_url: str = Field(min_length=1)
     title: str = Field(min_length=1)
     folder_name: str = Field(min_length=1)
-    folder_path: str = Field(min_length=1)
+    folder_path: str = ""
     cookies_browser: str | None = None
     resolution_limit: int | None = Field(default=None, ge=1)
     active: bool = True

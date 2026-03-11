@@ -24,15 +24,52 @@ export type PlaylistListResponse = {
   items: Playlist[];
 };
 
+export type Video = {
+  id: string;
+  playlist_id: string;
+  video_id: string;
+  title: string;
+  upload_date: string | null;
+  duration_seconds: number | null;
+  webpage_url: string;
+  thumbnail_url: string | null;
+  local_path: string | null;
+  downloaded: boolean;
+  download_error: string | null;
+  downloaded_at: string | null;
+  last_seen_at: string;
+  metadata_json: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type VideoListResponse = {
+  items: Video[];
+};
+
 export type CreatePlaylistInput = {
   source_url: string;
   title: string;
   folder_name: string;
-  folder_path: string;
+  folder_path?: string;
   cookies_browser: string | null;
   resolution_limit: number | null;
   active: boolean;
   playlist_id?: string | null;
+};
+
+export type SyncPlaylistResponse = {
+  playlist_id: string;
+  title: string;
+  new_videos: number;
+  total_videos: number;
+};
+
+export type DownloadNewResponse = {
+  playlist_id: string;
+  title: string;
+  downloaded_videos: number;
+  failed_videos: number;
 };
 
 const API_BASE_URL =
@@ -67,5 +104,21 @@ export async function createPlaylist(input: CreatePlaylistInput): Promise<Playli
   return request<Playlist>("/playlists", {
     method: "POST",
     body: JSON.stringify(input),
+  });
+}
+
+export async function syncPlaylist(playlistId: string): Promise<SyncPlaylistResponse> {
+  return request<SyncPlaylistResponse>(`/playlists/${playlistId}/sync`, {
+    method: "POST",
+  });
+}
+
+export async function fetchPlaylistVideos(playlistId: string): Promise<VideoListResponse> {
+  return request<VideoListResponse>(`/playlists/${playlistId}/videos`);
+}
+
+export async function downloadNewVideos(playlistId: string): Promise<DownloadNewResponse> {
+  return request<DownloadNewResponse>(`/playlists/${playlistId}/download-new`, {
+    method: "POST",
   });
 }
