@@ -1,0 +1,30 @@
+[project]
+name = "yt-down-api"
+version = "0.1.0"
+description = "Backend API for yt-down"
+requires-python = ">=3.12"
+dependencies = [
+  "alembic>=1.16.0",
+  "fastapi>=0.116.0",
+  "psycopg[binary]>=3.2.0",
+  "pydantic-settings>=2.10.0",
+  "sqlalchemy>=2.0.0",
+  "uvicorn[standard]>=0.35.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.uv]
+dev-dependencies = [
+  "httpx>=0.28.0",
+  "pytest>=8.4.0",
+  "ruff>=0.12.0",
+]
