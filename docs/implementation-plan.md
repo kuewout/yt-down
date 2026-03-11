@@ -1,0 +1,602 @@
+# yt-down App Plan
+
+## Goals
+
+Build a local web app that can:
+
+- Show the downloaded video library.
+- Track playlist subscriptions.
+- Check playlists for newly available videos.
+- Download new videos with `yt-dlp`.
+- Add and remove tracked playlists.
+- Rescan the local library when files are added, moved, or removed.
+
+This plan assumes:
+
+- A single repository for frontend and backend.
+- PostgreSQL is the system of record for app metadata and configuration.
+- `yt-dlp` remains the actual downloader.
+- Runtime activity is kept in memory instead of a persistent `jobs` table.
+
+## Recommended Repo Layout
+
+```text
+yt-down/
+  apps/
+    api/
+    web/
+  docs/
+    implementation-plan.md
+  infra/
+  packages/
+    shared-types/
+  media/
+  .gitignore
+  download_playlist.sh
+```
+
+Notes:
+
+- `apps/api` contains the FastAPI backend.
+- `apps/web` contains the React frontend.
+- `packages/shared-types` can hold shared API types if useful.
+- `media/` is a suggested default library root, but the app should support a configurable `MEDIA_ROOT`.
+- The current shell script should be treated as reference behavior, not the long-term core implementation.
+
+## Tech Stack
+
+### Backend
+
+- Python 3.12
+- FastAPI
+- SQLAlchemy 2.x
+- Alembic
+- `psycopg`
+- `yt-dlp` via `subprocess`
+
+### Frontend
+
+- React
+- TypeScript
+- Vite
+- TanStack Query
+- React Router
+
+### Database
+
+- PostgreSQL
+- Connection URL:
+  - `postgresql://postgres:postgres@localhost:5432/ytdown`
+
+## Why a Single Repo
+
+Use one repo rather than separate frontend and backend repos.
+
+Reasons:
+
+- The frontend and backend are one product with one local deployment flow.
+- API and UI will evolve together.
+- Shared types and endpoint changes are easier to manage.
+- Local development is simpler.
+- Release and setup documentation stay in one place.
+
+Only split into two repos later if deployment, ownership, or release cadence diverges.
+
+## System Design
+
+### Source of Truth
+
+- PostgreSQL is the source of truth for:
+  - tracked playlists
+  - discovered videos
+  - local file associations
+  - app configuration metadata
+- The filesystem is the source of truth for whether a file physically exists.
+
+### High-Level Flow
+
+1. User adds a playlist URL.
+2. Backend validates and normalizes the URL.
+3. Backend syncs the playlist with `yt-dlp --flat-playlist -J`.
+4. New video entries are upserted into Postgres.
+5. User downloads missing videos.
+6. Backend runs `yt-dlp` for missing items and updates video rows.
+7. Frontend reads playlist and video state from the API.
+8. Manual rescan can reconcile DB state against the filesystem.
+
+## Data Model
+
+### `playlists`
+
+- `id` UUID primary key
+- `source_url` text unique not null
+- `playlist_id` text nullable
+- `title` text not null
+- `folder_name` text not null
+- `folder_path` text not null
+- `cookies_browser` text nullable
+- `resolution_limit` integer nullable
+- `active` boolean not null default `true`
+- `last_checked_at` timestamptz nullable
+- `last_downloaded_at` timestamptz nullable
+- `created_at` timestamptz not null
+- `updated_at` timestamptz not null
+
+Indexes and constraints:
+
+- unique on `source_url`
+- index on `active`
+
+### `videos`
+
+- `id` UUID primary key
+- `playlist_id` UUID not null references `playlists(id)`
+- `video_id` text not null
+- `title` text not null
+- `upload_date` date nullable
+- `duration_seconds` integer nullable
+- `webpage_url` text not null
+- `thumbnail_url` text nullable
+- `local_path` text nullable
+- `downloaded` boolean not null default `false`
+- `download_error` text nullable
+- `downloaded_at` timestamptz nullable
+- `last_seen_at` timestamptz not null
+- `metadata_json` jsonb not null default `'{}'::jsonb`
+- `created_at` timestamptz not null
+- `updated_at` timestamptz not null
+
+Indexes and constraints:
+
+- unique on `(playlist_id, video_id)`
+- index on `downloaded`
+- index on `upload_date`
+- index on `last_seen_at`
+
+## Configuration
+
+Backend environment variables:
+
+- `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ytdown`
+- `MEDIA_ROOT=/absolute/path/to/library/root`
+- `APP_ENV=development`
+- `LOG_LEVEL=INFO`
+
+Optional:
+
+- `DEFAULT_COOKIES_BROWSER=chrome`
+
+Important:
+
+- Do not hardcode the current folder layout.
+- Make the media root configurable so the app can point at either `media/` or an existing directory tree.
+
+## Backend Architecture
+
+Suggested package structure:
+
+```text
+apps/api/
+  app/
+    api/
+    core/
+    db/
+    models/
+    schemas/
+    services/
+    main.py
+  alembic/
+  pyproject.toml
+```
+
+### Core Modules
+
+- `core/config.py`
+  - app settings
+- `db/session.py`
+  - engine and session factory
+- `models/playlist.py`
+  - ORM model
+- `models/video.py`
+  - ORM model
+- `schemas/`
+  - request and response models
+- `services/ytdlp.py`
+  - subprocess wrappers
+- `services/playlists.py`
+  - sync and CRUD orchestration
+- `services/library.py`
+  - filesystem scanning and reconciliation
+- `services/activity.py`
+  - in-memory runtime activity tracking
+
+## Frontend Architecture
+
+Suggested package structure:
+
+```text
+apps/web/
+  src/
+    api/
+    components/
+    features/
+    routes/
+    main.tsx
+```
+
+### Main Screens
+
+- Library
+- Playlist detail
+- Add playlist
+- Edit playlist
+- Settings
+
+### State Handling
+
+- Use TanStack Query for server state.
+- Avoid duplicating backend truth in frontend local state.
+- Poll lightweight activity state periodically instead of building persistent job history.
+
+## API Design
+
+### Health
+
+- `GET /api/health`
+
+Returns service and database health.
+
+### Playlists
+
+- `GET /api/playlists`
+- `POST /api/playlists`
+- `GET /api/playlists/{id}`
+- `PATCH /api/playlists/{id}`
+- `DELETE /api/playlists/{id}`
+
+`POST /api/playlists` request:
+
+```json
+{
+  "source_url": "https://www.youtube.com/playlist?list=...",
+  "folder_name": "wangzhian1",
+  "cookies_browser": "chrome",
+  "resolution_limit": 1440
+}
+```
+
+### Sync and Download
+
+- `POST /api/playlists/{id}/sync`
+- `POST /api/playlists/{id}/download-new`
+- `POST /api/library/rescan`
+
+### Videos
+
+- `GET /api/videos`
+- `GET /api/videos/{id}`
+
+Suggested filters:
+
+- `playlist_id`
+- `downloaded`
+- `search`
+- `limit`
+- `offset`
+
+### Activity
+
+- `GET /api/activity`
+
+This endpoint returns transient in-memory runtime state, for example:
+
+```json
+{
+  "status": "downloading",
+  "playlist_id": "uuid",
+  "video_id": "uuid",
+  "message": "Downloading current item",
+  "progress_percent": 37.5,
+  "started_at": "2026-03-11T10:15:00Z"
+}
+```
+
+This is not persisted across restarts.
+
+## yt-dlp Integration Strategy
+
+### General Rules
+
+- Use `subprocess` argument arrays, not shell strings.
+- Parse machine-readable output from `yt-dlp`.
+- Keep one wrapper module responsible for constructing commands.
+- Store useful metadata from `yt-dlp` in `metadata_json`.
+
+### Playlist Discovery
+
+Use:
+
+```bash
+yt-dlp --flat-playlist -J <playlist-url>
+```
+
+Purpose:
+
+- quickly fetch playlist entries
+- get stable video IDs
+- avoid downloading media during discovery
+
+### Video Download
+
+For each missing video:
+
+- build a normalized YouTube video URL
+- pass cookies when configured
+- pass output template based on playlist folder
+- apply resolution rules
+- update DB on success or failure
+
+Use a per-playlist archive file to prevent redownloads if helpful.
+
+### Output Template
+
+Suggested template:
+
+```text
+%(upload_date)s %(title)s.%(ext)s
+```
+
+Stored under the playlist folder path.
+
+## Runtime Activity Without a `jobs` Table
+
+It is reasonable to avoid a persistent `jobs` table for this app.
+
+Use a simple in-memory activity registry:
+
+- one global active operation at first
+- operation type: `sync`, `download`, `rescan`
+- associated playlist ID
+- associated video ID if applicable
+- status message
+- progress if known
+- start time
+
+Tradeoffs:
+
+- simpler implementation
+- no job history
+- no persisted retry state
+- activity is lost on server restart
+
+For a local single-user app, this is acceptable.
+
+## Playlist Sync Logic
+
+Algorithm:
+
+1. Load playlist record.
+2. Mark in-memory activity as `sync`.
+3. Run `yt-dlp --flat-playlist -J`.
+4. Extract playlist metadata and entries.
+5. Update playlist title and playlist ID if available.
+6. Upsert videos by `(playlist_id, video_id)`.
+7. Set `last_seen_at` for encountered entries.
+8. Set `last_checked_at`.
+9. Clear in-memory activity.
+
+Behavior decisions:
+
+- Do not delete video rows simply because they disappear from a playlist response.
+- Leave stale cleanup as a later feature.
+
+## Download Logic
+
+Algorithm:
+
+1. Load missing videos for a playlist where `downloaded = false`.
+2. Mark in-memory activity as `download`.
+3. Download sequentially.
+4. On success:
+   - set `downloaded = true`
+   - set `downloaded_at`
+   - set `local_path`
+   - clear `download_error`
+5. On failure:
+   - store `download_error`
+   - keep `downloaded = false`
+6. Update `last_downloaded_at` on playlist when done.
+7. Clear in-memory activity.
+
+Initial concurrency rule:
+
+- Only one active download flow globally.
+
+That keeps state management simple and avoids overlapping `yt-dlp` processes.
+
+## Filesystem Rescan Logic
+
+Algorithm:
+
+1. Enumerate files under `MEDIA_ROOT`.
+2. Match files against known playlist folders.
+3. Reconcile known `local_path` values.
+4. If a previously downloaded file is missing, mark it accordingly.
+5. If a known file path changed and can be identified confidently, update `local_path`.
+
+Important:
+
+- Prefer exact path matches.
+- Avoid aggressive fuzzy matching early; it will create bad associations.
+
+## Frontend Pages
+
+### Library Page
+
+Show:
+
+- tracked playlists
+- total downloaded count
+- missing count
+- failed count
+- recent videos
+
+Actions:
+
+- add playlist
+- rescan library
+- open playlist detail
+
+### Playlist Detail Page
+
+Show:
+
+- playlist title
+- source URL
+- folder path
+- current settings
+- video list
+- download statuses
+
+Actions:
+
+- sync playlist
+- download new videos
+- edit settings
+- remove playlist
+
+### Add Playlist Page
+
+Inputs:
+
+- playlist URL
+- folder name
+- cookies browser
+- resolution cap
+
+Behavior:
+
+- create playlist
+- optionally trigger initial sync immediately
+
+## Milestones
+
+### Milestone 1: Backend Bootstrap
+
+- scaffold FastAPI app
+- connect Postgres
+- add SQLAlchemy models
+- add Alembic migration
+- add health endpoint
+
+### Milestone 2: Playlist CRUD and Sync
+
+- implement playlist create/list/update/delete
+- implement URL normalization
+- implement sync endpoint
+- persist playlist and video metadata
+
+### Milestone 3: Frontend Read Path
+
+- scaffold Vite React app
+- build playlist list page
+- build playlist detail page
+- show synced video data
+
+### Milestone 4: Download Path
+
+- implement `download-new`
+- update video statuses
+- surface activity in UI
+
+### Milestone 5: Rescan and Reconciliation
+
+- implement library rescan
+- reconcile missing or moved files
+- add settings and polish
+
+## Task List
+
+### Repository Setup
+
+- create `apps/api`
+- create `apps/web`
+- create `packages/shared-types`
+- create `infra`
+- keep `docs/implementation-plan.md` updated as the design evolves
+
+### Backend Tasks
+
+- initialize Python project
+- add FastAPI, SQLAlchemy, Alembic, `psycopg`
+- implement settings and config
+- implement DB session management
+- create playlist and video models
+- create initial migration
+- implement playlist CRUD endpoints
+- implement yt-dlp wrapper service
+- implement sync service
+- implement download service
+- implement rescan service
+- implement in-memory activity registry
+- add structured logging
+- add error handling and response models
+
+### Frontend Tasks
+
+- initialize Vite React TypeScript app
+- add router
+- add TanStack Query
+- create API client
+- create layout and navigation
+- build playlists list view
+- build playlist detail view
+- build add/edit playlist form
+- build videos table with filters
+- build activity indicator
+
+### Integration Tasks
+
+- test add playlist flow
+- test sync flow
+- test download-new flow
+- test rescan flow
+- verify duplicate videos are not reinserted
+- verify downloaded videos are not redownloaded
+- verify delete playlist does not remove files by default
+
+### Documentation Tasks
+
+- write local development setup
+- document required tools
+- document Postgres setup
+- document environment variables
+- document media root expectations
+
+## Suggested First Vertical Slice
+
+Build this first:
+
+1. Create playlist from URL.
+2. Sync playlist into Postgres.
+3. Show discovered videos in the UI.
+4. Download missing videos for one playlist.
+5. Refresh statuses in the UI.
+
+This gives a working end-to-end product quickly and validates the architecture before adding more edge-case logic.
+
+## Open Decisions
+
+These still need to be finalized before implementation:
+
+- Which directory should be the default `MEDIA_ROOT` in this repo.
+- Whether to keep the existing repo-root folders or move everything under `media/`.
+- Whether progress updates should use polling first or WebSocket from day one.
+- Whether to support individual video downloads from the UI in the first version.
+
+Recommended defaults:
+
+- configurable `MEDIA_ROOT`
+- keep current folders in place for now
+- polling first
+- playlist-level `download-new` first, single-video download later
