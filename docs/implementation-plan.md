@@ -73,6 +73,61 @@ Last updated: 2026-03-11
 - Tests
 - Packaging / deployment workflow
 
+## Verification and Commit Policy
+
+This repo should use small, periodic commits, but only after the relevant verification passes.
+
+### Commit Rule
+
+- Do not commit halfway through a broken slice.
+- Commit after a coherent unit of work is done and the available verification for that unit passes.
+- Prefer one commit for one meaningful milestone or sub-milestone.
+
+### Minimum Verification Before Commit
+
+Backend-only changes:
+
+- Python modules compile successfully.
+- If schema changes are involved, Alembic migration runs successfully.
+- If API changes are involved, endpoints at least match the documented request/response shape.
+
+Frontend-only changes:
+
+- TypeScript/Vite build or local typecheck passes.
+- UI uses only currently implemented backend endpoints.
+
+Full-stack changes:
+
+- backend verification passes
+- frontend verification passes
+- if feasible, one live happy-path flow is exercised
+
+### Current Verification Reality
+
+Passed so far:
+
+- backend Python compile checks
+- initial database migration execution
+
+Still needed:
+
+- frontend build/type verification
+- browser-level flow verification
+- real playlist sync/download happy-path verification
+
+### Planned Commit Checkpoints
+
+1. Backend bootstrap and schema
+   - verification: compile + migration
+2. Playlist CRUD and sync
+   - verification: compile + route shape sanity
+3. Download-new flow
+   - verification: compile + route shape sanity
+4. Frontend playlist management
+   - verification: frontend build/typecheck + manual browser pass
+5. Rescan/reconciliation
+   - verification: backend checks + manual reconciliation test
+
 ## Goals
 
 Build a local web app that can:
@@ -338,11 +393,22 @@ Returns service and database health.
 }
 ```
 
+Current implementation note:
+
+- `title`, `folder_name`, and `folder_path` may be omitted or left empty.
+- The backend will derive defaults from the playlist URL and `MEDIA_ROOT`.
+
 ### Sync and Download
 
 - `POST /api/playlists/{id}/sync`
 - `POST /api/playlists/{id}/download-new`
 - `POST /api/library/rescan`
+
+Current implementation note:
+
+- `sync` is implemented.
+- `download-new` is implemented.
+- `library/rescan` is planned only, not implemented yet.
 
 ### Videos
 
@@ -356,6 +422,13 @@ Suggested filters:
 - `search`
 - `limit`
 - `offset`
+
+Current implementation note:
+
+- `GET /api/videos` is implemented.
+- `GET /api/playlists/{id}/videos` is implemented.
+- `GET /api/videos/{id}` is not implemented yet.
+- query filters are not implemented yet.
 
 ### Activity
 
@@ -375,6 +448,10 @@ This endpoint returns transient in-memory runtime state, for example:
 ```
 
 This is not persisted across restarts.
+
+Current implementation note:
+
+- This endpoint is not implemented yet.
 
 ## yt-dlp Integration Strategy
 
@@ -592,6 +669,7 @@ Remaining:
 
 - separate playlist detail route
 - richer library overview page
+- frontend build/type verification documented in this plan cycle
 
 ### Milestone 4: Download Path
 
@@ -608,6 +686,7 @@ Remaining:
 - live progress reporting
 - runtime activity status API
 - better download error surfacing in UI
+- real end-to-end download verification in browser
 
 ### Milestone 5: Rescan and Reconciliation
 
@@ -619,6 +698,34 @@ Remaining:
 - reconcile local files to `videos.local_path`
 - mark missing files
 - support moved-file path refresh
+
+## Verification Matrix
+
+### Verified
+
+- backend module import/compile sanity
+- Alembic migration to Postgres
+- route inventory and doc alignment for implemented playlist/video endpoints
+
+### Partially Verified
+
+- playlist sync logic
+  - code implemented
+  - live happy-path still pending
+- download-new logic
+  - code implemented
+  - live happy-path still pending
+- frontend playlist management
+  - code implemented
+  - browser verification still pending
+
+### Not Verified Yet
+
+- frontend build/typecheck
+- create -> sync -> view videos flow in browser
+- download-new flow in browser
+- edit/remove playlist flow in browser
+- any rescan behavior
 
 ## Milestones
 
@@ -732,6 +839,7 @@ TODO:
 - build activity indicator
 - improve mutation/loading UX
 - add delete confirmation UX
+- add frontend build/typecheck step to routine verification
 
 ### Integration Tasks
 
@@ -745,6 +853,8 @@ TODO:
 - test add playlist flow in browser
 - test sync flow against a real playlist
 - test download-new flow against a real playlist
+- test playlist edit flow in browser
+- test playlist remove flow in browser
 - test rescan flow
 - verify duplicate videos are not reinserted
 - verify downloaded videos are not redownloaded
@@ -811,3 +921,18 @@ These are the clearest next tasks from here, in recommended order:
 6. Add tests for backend services and API routes.
 7. Add settings APIs and a real settings screen.
 8. Improve download UX with clearer failure messages and progress feedback.
+
+## Immediate Next TODO
+
+If continuing from this document right now, the recommended next implementation item is:
+
+1. `POST /api/library/rescan`
+   - scan `MEDIA_ROOT`
+   - reconcile files with tracked playlists and videos
+   - update `local_path` and `downloaded`
+   - keep matching conservative
+
+After that:
+
+2. add lightweight activity reporting for sync/download
+3. verify the existing frontend flows in a browser
