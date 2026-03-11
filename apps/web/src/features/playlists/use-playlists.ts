@@ -6,6 +6,7 @@ import {
   downloadNewVideos,
   fetchPlaylistVideos,
   fetchPlaylists,
+  rescanLibrary,
   syncPlaylist,
   type CreatePlaylistInput,
   type UpdatePlaylistInput,
@@ -86,6 +87,20 @@ export function useDeletePlaylist() {
 
   return useMutation({
     mutationFn: (playlistId: string) => deletePlaylist(playlistId),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["playlists"] }),
+        queryClient.invalidateQueries({ queryKey: ["playlist-videos"] }),
+      ]);
+    },
+  });
+}
+
+export function useRescanLibrary() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => rescanLibrary(),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["playlists"] }),

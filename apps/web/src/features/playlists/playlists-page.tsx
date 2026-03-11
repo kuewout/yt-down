@@ -6,6 +6,7 @@ import {
   useDownloadNewVideos,
   usePlaylistVideos,
   usePlaylists,
+  useRescanLibrary,
   useSyncPlaylist,
   useUpdatePlaylist,
 } from "./use-playlists";
@@ -33,6 +34,7 @@ export function PlaylistsPage() {
   const createPlaylist = useCreatePlaylist();
   const syncPlaylist = useSyncPlaylist();
   const downloadNewVideos = useDownloadNewVideos();
+  const rescanLibrary = useRescanLibrary();
   const updatePlaylist = useUpdatePlaylist();
   const deletePlaylist = useDeletePlaylist();
   const [form, setForm] = useState<FormState>(initialFormState);
@@ -131,6 +133,16 @@ export function PlaylistsPage() {
             <strong>{selectedPlaylist ? selectedPlaylist.title : "None"}</strong>
           </article>
         </div>
+        <div className="toolbar-row">
+          <button
+            className="secondary-button toolbar-button"
+            type="button"
+            disabled={rescanLibrary.isPending}
+            onClick={() => rescanLibrary.mutate()}
+          >
+            {rescanLibrary.isPending ? "Rescanning..." : "Rescan library"}
+          </button>
+        </div>
         {isLoading && <p className="hint">Loading playlists...</p>}
         {isError && (
           <p className="error-text">
@@ -217,6 +229,25 @@ export function PlaylistsPage() {
             Downloaded {downloadNewVideos.data.downloaded_videos} videos, failed{" "}
             {downloadNewVideos.data.failed_videos}.
           </p>
+        )}
+        {rescanLibrary.isError && (
+          <p className="error-text">
+            Rescan failed:{" "}
+            {rescanLibrary.error instanceof Error ? rescanLibrary.error.message : "Unknown error"}
+          </p>
+        )}
+        {rescanLibrary.data && (
+          <section className="status-card status-card-wide">
+            <span className="status-label">Latest rescan</span>
+            <strong>
+              {rescanLibrary.data.files_scanned} files across {rescanLibrary.data.playlists_scanned}{" "}
+              playlists
+            </strong>
+            <p className="hint status-copy">
+              Relinked {rescanLibrary.data.relinked_videos}, unchanged{" "}
+              {rescanLibrary.data.unchanged_videos}, missing {rescanLibrary.data.missing_videos}.
+            </p>
+          </section>
         )}
       </section>
 

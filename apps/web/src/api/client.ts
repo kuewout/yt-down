@@ -74,6 +74,14 @@ export type DownloadNewResponse = {
   failed_videos: number;
 };
 
+export type LibraryRescanResponse = {
+  playlists_scanned: number;
+  files_scanned: number;
+  relinked_videos: number;
+  missing_videos: number;
+  unchanged_videos: number;
+};
+
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api";
 
@@ -142,5 +150,11 @@ export async function updatePlaylist(
 export async function deletePlaylist(playlistId: string): Promise<void> {
   await request<void>(`/playlists/${playlistId}`, {
     method: "DELETE",
+  });
+}
+
+export async function rescanLibrary(): Promise<LibraryRescanResponse> {
+  return request<LibraryRescanResponse>("/library/rescan", {
+    method: "POST",
   });
 }

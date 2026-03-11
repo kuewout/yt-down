@@ -412,7 +412,7 @@ Current implementation note:
   - keep an existing `local_path` if the file still exists
   - clear stale paths when files are gone
   - relink only when a video maps to exactly one filename match from the expected `upload_date + title` stem
-- There is no frontend rescan trigger yet.
+- A frontend rescan trigger and summary display are implemented on the playlists page.
 
 ### Videos
 
@@ -703,10 +703,10 @@ Done:
 - filesystem scan implemented per tracked playlist folder
 - stale `local_path` values cleared when files are missing
 - conservative file relinking implemented for unambiguous matches
+- frontend rescan action and summary display implemented on the playlists page
 
 Remaining:
 
-- frontend rescan action
 - live rescan verification against real files
 - richer moved-file detection beyond conservative stem matching
 
@@ -846,6 +846,7 @@ Completed:
 - build edit playlist form
 - build selected playlist video list
 - improve playlist page responsive layout
+- add library rescan trigger and result display
 
 TODO:
 
@@ -855,7 +856,6 @@ TODO:
 - build activity indicator
 - improve mutation/loading UX
 - add delete confirmation UX
-- add library rescan trigger and result display
 - verify responsive behavior in a live browser
 
 ### Integration Tasks
@@ -930,25 +930,25 @@ Recommended defaults:
 
 These are the clearest next tasks from here, in recommended order:
 
-1. Add a frontend rescan action and show the returned summary in the UI.
-2. Add runtime activity/progress reporting for sync and download operations.
-3. Build a dedicated playlist detail route instead of using the combined management panel.
-4. Build a true library overview page with counts, recent videos, and filters.
-5. Add browser-level end-to-end verification for create, sync, download, edit, delete, and rescan flows.
-6. Add tests for backend services and API routes.
-7. Add settings APIs and a real settings screen.
-8. Improve download UX with clearer failure messages and progress feedback.
+1. Add runtime activity/progress reporting for sync and download operations.
+2. Build a dedicated playlist detail route instead of using the combined management panel.
+3. Build a true library overview page with counts, recent videos, and filters.
+4. Add browser-level end-to-end verification for create, sync, download, edit, delete, and rescan flows.
+5. Add tests for backend services and API routes.
+6. Add settings APIs and a real settings screen.
+7. Improve download UX with clearer failure messages and progress feedback.
+8. Improve moved-file detection beyond the current conservative filename-stem matching.
 
 ## Immediate Next TODO
 
 If continuing from this document right now, the recommended next implementation item is:
 
-1. frontend support for `POST /api/library/rescan`
-   - add a rescan action
-   - show the returned summary
-   - verify the flow against real library files
+1. lightweight activity reporting for sync and download
+   - add an in-memory activity registry on the backend
+   - expose it through `GET /api/activity`
+   - surface it in the playlists UI first
 
 After that:
 
-2. add lightweight activity reporting for sync/download
-3. verify the existing frontend flows in a browser
+2. verify the existing frontend flows in a browser
+3. verify the rescan flow against real library files

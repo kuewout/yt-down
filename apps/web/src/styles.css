@@ -127,6 +127,15 @@ a {
   color: var(--accent-strong);
 }
 
+.status-card-wide {
+  display: grid;
+  width: 100%;
+}
+
+.status-copy {
+  margin: 0;
+}
+
 .summary-strip {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -204,6 +213,16 @@ a {
   display: flex;
   gap: 10px;
   margin-top: 16px;
+}
+
+.toolbar-row {
+  display: flex;
+  gap: 12px;
+  margin: 20px 0 8px;
+}
+
+.toolbar-button {
+  min-width: 180px;
 }
 
 .card-actions-wrap {
@@ -376,6 +395,15 @@ a {
 
   .card-actions-wrap > * {
     flex-basis: 100%;
+  }
+
+  .toolbar-row {
+    flex-direction: column;
+  }
+
+  .toolbar-button {
+    min-width: 0;
+    width: 100%;
   }
 
   .video-row {
