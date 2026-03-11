@@ -1,10 +1,12 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class ActivityRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     status: str
     operation: str | None
     is_active: bool
