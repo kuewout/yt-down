@@ -863,6 +863,7 @@ Completed:
 - improve playlist page responsive layout
 - add library rescan trigger and result display
 - add activity indicator
+- redesign playlist page to move low-frequency actions into tabs and modal flows
 
 TODO:
 
