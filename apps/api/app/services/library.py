@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Playlist, Video
+from app.services.activity import activity_registry
 
 
 @dataclass
@@ -24,38 +25,60 @@ def rescan_library(db: Session) -> LibraryRescanResult:
     missing_videos = 0
     unchanged_videos = 0
 
-    for playlist in playlists:
-        playlist_files = _collect_playlist_files(Path(playlist.folder_path))
-        files_scanned += len(playlist_files)
-        files_by_normalized_stem = _build_normalized_index(playlist_files)
-        videos = db.scalars(select(Video).where(Video.playlist_id == playlist.id)).all()
+    activity_registry.start(
+        operation="rescan",
+        message="Scanning playlist folders",
+        items_total=len(playlists),
+    )
+    try:
+        for index, playlist in enumerate(playlists, start=1):
+            activity_registry.update(
+                playlist_id=playlist.id,
+                playlist_title=playlist.title,
+                message=f"Scanning {playlist.title}",
+                items_completed=index - 1,
+            )
+            playlist_files = _collect_playlist_files(Path(playlist.folder_path))
+            files_scanned += len(playlist_files)
+            files_by_normalized_stem = _build_normalized_index(playlist_files)
+            videos = db.scalars(select(Video).where(Video.playlist_id == playlist.id)).all()
 
-        for video in videos:
-            current_path = Path(video.local_path) if video.local_path else None
-            if current_path and current_path.is_file():
-                resolved_path = str(current_path.resolve())
-                if video.local_path != resolved_path:
-                    video.local_path = resolved_path
+            for video in videos:
+                current_path = Path(video.local_path) if video.local_path else None
+                if current_path and current_path.is_file():
+                    resolved_path = str(current_path.resolve())
+                    if video.local_path != resolved_path:
+                        video.local_path = resolved_path
+                    video.downloaded = True
+                    video.download_error = None
+                    unchanged_videos += 1
+                    continue
+
+                if video.local_path:
+                    video.local_path = None
+
+                matched_path = _match_video_file(video, files_by_normalized_stem)
+                if matched_path is None:
+                    video.downloaded = False
+                    missing_videos += 1
+                    continue
+
+                video.local_path = str(matched_path.resolve())
                 video.downloaded = True
                 video.download_error = None
-                unchanged_videos += 1
-                continue
+                relinked_videos += 1
 
-            if video.local_path:
-                video.local_path = None
+            activity_registry.update(items_completed=index)
 
-            matched_path = _match_video_file(video, files_by_normalized_stem)
-            if matched_path is None:
-                video.downloaded = False
-                missing_videos += 1
-                continue
+        db.commit()
+    except Exception as exc:
+        activity_registry.fail(str(exc))
+        raise
 
-            video.local_path = str(matched_path.resolve())
-            video.downloaded = True
-            video.download_error = None
-            relinked_videos += 1
-
-    db.commit()
+    activity_registry.complete(
+        message=f"Rescanned {len(playlists)} playlists and {files_scanned} files",
+        items_completed=len(playlists),
+    )
     return LibraryRescanResult(
         playlists_scanned=len(playlists),
         files_scanned=files_scanned,
@@ -102,4 +125,3 @@ def _expected_stem(video: Video) -> str:
 
 def _normalize_name(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", value.casefold())
-

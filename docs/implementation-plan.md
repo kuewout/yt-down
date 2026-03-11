@@ -36,6 +36,10 @@ Last updated: 2026-03-11
   - `POST /api/playlists/{id}/download-new`
   - `yt-dlp` download execution
   - persisted `downloaded`, `downloaded_at`, `local_path`, `download_error`
+- Lightweight runtime activity reporting is implemented with:
+  - in-memory registry in the API process
+  - `GET /api/activity`
+  - activity updates for sync, download, and rescan operations
 - Frontend scaffold is implemented with React, TypeScript, Vite, and TanStack Query.
 - Frontend can:
   - list playlists
@@ -44,8 +48,10 @@ Last updated: 2026-03-11
   - select a playlist and view discovered videos
   - trigger sync
   - trigger download of missing videos
+  - poll and display current or latest backend activity
   - edit playlist settings
   - remove a playlist from tracking
+  - trigger library rescan and view the latest summary
 - Playlist creation is simplified:
   - URL-first flow
   - optional title/folder input
@@ -58,12 +64,13 @@ Last updated: 2026-03-11
   - create playlist
   - sync playlist
   - download new videos
+  - activity display during sync/download/rescan
   - playlist edit/remove
+  - library rescan
   still needs to be exercised in the running app.
 
 ### Not Started Yet
 
-- Activity/status API and runtime progress reporting
 - Dedicated library overview page
 - Dedicated playlist detail route
 - Settings page backed by real configuration APIs
@@ -688,8 +695,6 @@ Done:
 
 Remaining:
 
-- live progress reporting
-- runtime activity status API
 - better download error surfacing in UI
 - real end-to-end download verification in browser
 
@@ -930,25 +935,26 @@ Recommended defaults:
 
 These are the clearest next tasks from here, in recommended order:
 
-1. Add runtime activity/progress reporting for sync and download operations.
-2. Build a dedicated playlist detail route instead of using the combined management panel.
-3. Build a true library overview page with counts, recent videos, and filters.
-4. Add browser-level end-to-end verification for create, sync, download, edit, delete, and rescan flows.
-5. Add tests for backend services and API routes.
-6. Add settings APIs and a real settings screen.
-7. Improve download UX with clearer failure messages and progress feedback.
-8. Improve moved-file detection beyond the current conservative filename-stem matching.
+1. Build a dedicated playlist detail route instead of using the combined management panel.
+2. Build a true library overview page with counts, recent videos, and filters.
+3. Add browser-level end-to-end verification for create, sync, download, edit, delete, activity, and rescan flows.
+4. Add tests for backend services and API routes.
+5. Add settings APIs and a real settings screen.
+6. Improve download UX with clearer failure messages and progress feedback.
+7. Improve moved-file detection beyond the current conservative filename-stem matching.
 
 ## Immediate Next TODO
 
 If continuing from this document right now, the recommended next implementation item is:
 
-1. lightweight activity reporting for sync and download
-   - add an in-memory activity registry on the backend
-   - expose it through `GET /api/activity`
-   - surface it in the playlists UI first
+1. verify the current full-stack flows in a browser
+   - create playlist
+   - sync playlist
+   - download new
+   - rescan library
+   - observe activity updates during operations
 
 After that:
 
-2. verify the existing frontend flows in a browser
+2. build a dedicated playlist detail route
 3. verify the rescan flow against real library files

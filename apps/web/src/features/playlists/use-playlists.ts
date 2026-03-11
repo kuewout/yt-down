@@ -4,6 +4,7 @@ import {
   createPlaylist,
   deletePlaylist,
   downloadNewVideos,
+  fetchActivity,
   fetchPlaylistVideos,
   fetchPlaylists,
   rescanLibrary,
@@ -17,6 +18,14 @@ export function usePlaylists() {
   return useQuery({
     queryKey: ["playlists"],
     queryFn: fetchPlaylists,
+  });
+}
+
+export function useActivity() {
+  return useQuery({
+    queryKey: ["activity"],
+    queryFn: fetchActivity,
+    refetchInterval: 3000,
   });
 }
 

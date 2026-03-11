@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models import Playlist, Video
+from app.services.activity import activity_registry
 from app.services.ytdlp import PlaylistSnapshot, YtDlpError, fetch_flat_playlist
 
 
@@ -33,14 +34,34 @@ def sync_playlist(db: Session, playlist_id: UUID) -> tuple[Playlist, int]:
     if playlist is None:
         raise ValueError("Playlist not found")
 
-    snapshot = fetch_flat_playlist(playlist.source_url)
-    playlist.title = snapshot.title
-    playlist.playlist_id = snapshot.playlist_id
-    playlist.last_checked_at = datetime.now(UTC)
+    activity_registry.start(
+        operation="sync",
+        playlist_id=playlist.id,
+        playlist_title=playlist.title,
+        message="Fetching playlist metadata",
+    )
+    try:
+        snapshot = fetch_flat_playlist(playlist.source_url)
+        activity_registry.update(
+            playlist_title=snapshot.title,
+            message=f"Processing {len(snapshot.entries)} playlist entries",
+            items_total=len(snapshot.entries),
+        )
+        playlist.title = snapshot.title
+        playlist.playlist_id = snapshot.playlist_id
+        playlist.last_checked_at = datetime.now(UTC)
 
-    created_count = _upsert_playlist_entries(db, playlist, snapshot)
-    db.commit()
-    db.refresh(playlist)
+        created_count = _upsert_playlist_entries(db, playlist, snapshot)
+        db.commit()
+        db.refresh(playlist)
+    except Exception as exc:
+        activity_registry.fail(str(exc))
+        raise
+
+    activity_registry.complete(
+        message=f"Synced {playlist.title}: {created_count} new videos",
+        items_completed=len(snapshot.entries),
+    )
     return playlist, created_count
 
 

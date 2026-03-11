@@ -4,6 +4,22 @@ export type HealthResponse = {
   environment: string;
 };
 
+export type ActivityResponse = {
+  status: string;
+  operation: string | null;
+  is_active: boolean;
+  playlist_id: string | null;
+  playlist_title: string | null;
+  video_id: string | null;
+  video_title: string | null;
+  message: string | null;
+  items_completed: number;
+  items_total: number | null;
+  started_at: string | null;
+  updated_at: string | null;
+  finished_at: string | null;
+};
+
 export type Playlist = {
   id: string;
   source_url: string;
@@ -109,6 +125,10 @@ export async function fetchHealth(): Promise<HealthResponse> {
 }
 
 fetchHealth.endpoint = `${API_BASE_URL}/health`;
+
+export async function fetchActivity(): Promise<ActivityResponse> {
+  return request<ActivityResponse>("/activity");
+}
 
 export async function fetchPlaylists(): Promise<PlaylistListResponse> {
   return request<PlaylistListResponse>("/playlists");

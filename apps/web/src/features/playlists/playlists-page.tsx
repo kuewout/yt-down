@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 
 import {
+  useActivity,
   useCreatePlaylist,
   useDeletePlaylist,
   useDownloadNewVideos,
@@ -31,6 +32,7 @@ const initialFormState: FormState = {
 
 export function PlaylistsPage() {
   const { data, isLoading, isError, error } = usePlaylists();
+  const activity = useActivity();
   const createPlaylist = useCreatePlaylist();
   const syncPlaylist = useSyncPlaylist();
   const downloadNewVideos = useDownloadNewVideos();
@@ -143,6 +145,30 @@ export function PlaylistsPage() {
             {rescanLibrary.isPending ? "Rescanning..." : "Rescan library"}
           </button>
         </div>
+        {activity.data && activity.data.operation && (
+          <section className={`status-card status-card-wide ${activity.data.is_active ? "status-live" : ""}`}>
+            <span className="status-label">
+              {activity.data.is_active ? "Current activity" : "Latest activity"}
+            </span>
+            <strong>
+              {activity.data.operation} {activity.data.playlist_title ? `· ${activity.data.playlist_title}` : ""}
+            </strong>
+            {activity.data.message && <p className="hint status-copy">{activity.data.message}</p>}
+            {(activity.data.items_total !== null || activity.data.video_title) && (
+              <p className="hint status-copy">
+                {activity.data.video_title ? `${activity.data.video_title} · ` : ""}
+                {activity.data.items_total !== null
+                  ? `${activity.data.items_completed}/${activity.data.items_total}`
+                  : `${activity.data.items_completed}`}
+              </p>
+            )}
+          </section>
+        )}
+        {activity.isError && (
+          <p className="error-text">
+            Activity unavailable: {activity.error instanceof Error ? activity.error.message : "Unknown error"}
+          </p>
+        )}
         {isLoading && <p className="hint">Loading playlists...</p>}
         {isError && (
           <p className="error-text">
