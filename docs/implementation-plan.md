@@ -1,5 +1,78 @@
 # yt-down App Plan
 
+## Current Status
+
+Last updated: 2026-03-11
+
+### Completed
+
+- Root repo scaffolding is in place for:
+  - `apps/api`
+  - `apps/web`
+  - `packages/shared-types`
+  - `infra`
+- Root `.gitignore` exists and covers Python, Node, build, and local artifact output.
+- FastAPI backend scaffold is implemented.
+- PostgreSQL connection settings are wired.
+- SQLAlchemy models for `playlists` and `videos` are implemented.
+- Alembic configuration and the initial migration are implemented.
+- Initial migration has been applied to the Postgres database.
+- Playlist CRUD API is implemented:
+  - `GET /api/playlists`
+  - `POST /api/playlists`
+  - `GET /api/playlists/{id}`
+  - `PATCH /api/playlists/{id}`
+  - `DELETE /api/playlists/{id}`
+- Health endpoint is implemented:
+  - `GET /api/health`
+- Video listing endpoints are implemented:
+  - `GET /api/videos`
+  - `GET /api/playlists/{id}/videos`
+- `yt-dlp` playlist sync is implemented with:
+  - `POST /api/playlists/{id}/sync`
+  - `yt-dlp --flat-playlist -J`
+  - upsert of discovered videos into Postgres
+- Sequential download of missing videos is implemented with:
+  - `POST /api/playlists/{id}/download-new`
+  - `yt-dlp` download execution
+  - persisted `downloaded`, `downloaded_at`, `local_path`, `download_error`
+- Frontend scaffold is implemented with React, TypeScript, Vite, and TanStack Query.
+- Frontend can:
+  - list playlists
+  - create a playlist
+  - automatically sync a newly created playlist
+  - select a playlist and view discovered videos
+  - trigger sync
+  - trigger download of missing videos
+  - edit playlist settings
+  - remove a playlist from tracking
+- Playlist creation is simplified:
+  - URL-first flow
+  - optional title/folder input
+  - derived folder name and path defaults
+
+### Implemented But Not Fully Verified End-to-End
+
+- Browser-level verification of the frontend flows has not been completed in this doc cycle.
+- Live end-to-end verification of:
+  - create playlist
+  - sync playlist
+  - download new videos
+  - playlist edit/remove
+  still needs to be exercised in the running app.
+
+### Not Started Yet
+
+- Filesystem rescan and reconciliation
+- Activity/status API and runtime progress reporting
+- Dedicated library overview page
+- Dedicated playlist detail route
+- Settings page backed by real configuration APIs
+- Thumbnail handling
+- Search/filter/sort for videos
+- Tests
+- Packaging / deployment workflow
+
 ## Goals
 
 Build a local web app that can:
@@ -479,6 +552,74 @@ Behavior:
 - create playlist
 - optionally trigger initial sync immediately
 
+## Progress by Milestone
+
+### Milestone 1: Backend Bootstrap
+
+Status: completed
+
+Done:
+
+- FastAPI app scaffolded
+- Postgres settings wired
+- SQLAlchemy models added
+- Alembic added
+- Initial migration created and applied
+- health endpoint added
+
+### Milestone 2: Playlist CRUD and Sync
+
+Status: completed
+
+Done:
+
+- playlist create/list/update/delete implemented
+- URL-derived defaults implemented
+- sync endpoint implemented
+- playlist and video metadata persisted
+
+### Milestone 3: Frontend Read Path
+
+Status: mostly completed
+
+Done:
+
+- Vite React app scaffolded
+- playlists screen implemented
+- synced video list can be viewed for selected playlist
+
+Remaining:
+
+- separate playlist detail route
+- richer library overview page
+
+### Milestone 4: Download Path
+
+Status: partially completed
+
+Done:
+
+- `download-new` backend endpoint implemented
+- video status persistence implemented
+- frontend download trigger implemented
+
+Remaining:
+
+- live progress reporting
+- runtime activity status API
+- better download error surfacing in UI
+
+### Milestone 5: Rescan and Reconciliation
+
+Status: not started
+
+Remaining:
+
+- implement filesystem scan
+- reconcile local files to `videos.local_path`
+- mark missing files
+- support moved-file path refresh
+
 ## Milestones
 
 ### Milestone 1: Backend Bootstrap
@@ -517,6 +658,25 @@ Behavior:
 
 ## Task List
 
+The list below is now split into completed work and explicit future TODO items.
+
+### Completed Tasks
+
+- create monorepo folder structure
+- add backend scaffold
+- add frontend scaffold
+- add Postgres configuration
+- add SQLAlchemy models for playlists and videos
+- add Alembic configuration and initial migration
+- apply the initial migration
+- implement playlist CRUD API
+- implement playlist sync with `yt-dlp --flat-playlist -J`
+- implement video listing API
+- implement download of missing videos
+- implement frontend playlist list/create flow
+- implement frontend sync/download actions
+- implement frontend playlist edit/remove actions
+
 ### Repository Setup
 
 - create `apps/api`
@@ -526,6 +686,8 @@ Behavior:
 - keep `docs/implementation-plan.md` updated as the design evolves
 
 ### Backend Tasks
+
+Completed:
 
 - initialize Python project
 - add FastAPI, SQLAlchemy, Alembic, `psycopg`
@@ -537,12 +699,20 @@ Behavior:
 - implement yt-dlp wrapper service
 - implement sync service
 - implement download service
+- add basic error handling and response models
+
+TODO:
+
 - implement rescan service
 - implement in-memory activity registry
 - add structured logging
-- add error handling and response models
+- add `GET /api/videos/{id}`
+- add `POST /api/library/rescan`
+- add `GET /api/activity`
 
 ### Frontend Tasks
+
+Completed:
 
 - initialize Vite React TypeScript app
 - add router
@@ -550,28 +720,51 @@ Behavior:
 - create API client
 - create layout and navigation
 - build playlists list view
-- build playlist detail view
-- build add/edit playlist form
+- build add playlist form
+- build edit playlist form
+- build selected playlist video list
+
+TODO:
+
+- build dedicated playlist detail view
+- build library overview screen
 - build videos table with filters
 - build activity indicator
+- improve mutation/loading UX
+- add delete confirmation UX
 
 ### Integration Tasks
 
-- test add playlist flow
-- test sync flow
-- test download-new flow
+Completed:
+
+- verify backend Python modules compile successfully
+- verify database migration runs successfully against Postgres
+
+TODO:
+
+- test add playlist flow in browser
+- test sync flow against a real playlist
+- test download-new flow against a real playlist
 - test rescan flow
 - verify duplicate videos are not reinserted
 - verify downloaded videos are not redownloaded
 - verify delete playlist does not remove files by default
+- verify edited playlist settings affect future downloads
 
 ### Documentation Tasks
+
+Completed:
+
+- write initial implementation plan
+
+TODO:
 
 - write local development setup
 - document required tools
 - document Postgres setup
 - document environment variables
 - document media root expectations
+- document current API endpoints
 
 ## Suggested First Vertical Slice
 
@@ -584,6 +777,11 @@ Build this first:
 5. Refresh statuses in the UI.
 
 This gives a working end-to-end product quickly and validates the architecture before adding more edge-case logic.
+
+Status:
+
+- This slice is now substantially implemented.
+- Remaining work is real-world verification in the running app.
 
 ## Open Decisions
 
@@ -600,3 +798,16 @@ Recommended defaults:
 - keep current folders in place for now
 - polling first
 - playlist-level `download-new` first, single-video download later
+
+## Future TODO Summary
+
+These are the clearest next tasks from here, in recommended order:
+
+1. Implement filesystem rescan and reconciliation.
+2. Add runtime activity/progress reporting for sync and download operations.
+3. Build a dedicated playlist detail route instead of using the combined management panel.
+4. Build a true library overview page with counts, recent videos, and filters.
+5. Add browser-level end-to-end verification for create, sync, download, edit, and delete flows.
+6. Add tests for backend services and API routes.
+7. Add settings APIs and a real settings screen.
+8. Improve download UX with clearer failure messages and progress feedback.
