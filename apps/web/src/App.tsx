@@ -48,6 +48,24 @@ function SettingsIcon() {
   );
 }
 
+function ChevronDoubleIcon({ collapsed }: { collapsed: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+      {collapsed ? (
+        <>
+          <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M5 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      ) : (
+        <>
+          <path d="M15 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M19 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      )}
+    </svg>
+  );
+}
+
 const navItems: NavItem[] = [
   {
     to: "/",
@@ -125,6 +143,7 @@ function Navigation({
           end={item.to === "/"}
           className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
           onClick={onNavigate}
+          title={collapsed && !mobile ? item.label : undefined}
         >
           <span className="nav-glyph" aria-hidden="true">
             {item.icon}
@@ -159,21 +178,26 @@ export function App() {
             )}
           </div>
           <button
-            className="secondary-button sidebar-toggle"
+            className="sidebar-toggle"
             type="button"
             onClick={() => setIsSidebarCollapsed((current) => !current)}
             aria-label={isSidebarCollapsed ? "Expand navigation" : "Collapse navigation"}
           >
-            {isSidebarCollapsed ? "Expand" : "Collapse"}
+            <span className="sidebar-toggle-icon" aria-hidden="true">
+              <ChevronDoubleIcon collapsed={isSidebarCollapsed} />
+            </span>
+            {!isSidebarCollapsed && <span>Collapse</span>}
           </button>
         </div>
 
+        {!isSidebarCollapsed && <span className="nav-section-label">Workspace</span>}
         <Navigation collapsed={isSidebarCollapsed} />
 
         {!isSidebarCollapsed && (
           <div className="sidebar-footer">
-            <span className="status-label">Workspace</span>
-            <p className="hint">Optimized for wide content rails and fast playlist ops.</p>
+            <span className="status-label">Library mode</span>
+            <strong>Local-first download control</strong>
+            <p className="hint">Playlists, sync status, and downloads stay one click away.</p>
           </div>
         )}
       </aside>

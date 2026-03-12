@@ -126,6 +126,8 @@ export function PlaylistsPage() {
   const videoStatsByPlaylist = new Map<string, { total: number; downloaded: number; failed: number }>();
   const visiblePlaylists =
     data?.items.filter((playlist) => (playlistFilter === "active" ? playlist.active : !playlist.active)) ?? [];
+  const activityData = activity.data;
+  const hasActivity = Boolean(activityData && activityData.operation);
 
   videos.data?.items.forEach((video) => {
     const current = videoStatsByPlaylist.get(video.playlist_id) ?? { total: 0, downloaded: 0, failed: 0 };
@@ -244,6 +246,30 @@ export function PlaylistsPage() {
   return (
     <>
       <div className="playlist-page">
+        {hasActivity && activityData && (
+          <section className={`activity-overlay ${activityData.is_active ? "activity-overlay-live" : ""}`}>
+            <div className="activity-overlay-header">
+              <span className="status-label">
+                {activityData.is_active ? "Current activity" : "Latest activity"}
+              </span>
+              {activityData.is_active && <span className="activity-live-pill">Live</span>}
+            </div>
+            <strong className="activity-overlay-title">
+              {activityData.operation}
+              {activityData.playlist_title ? ` · ${activityData.playlist_title}` : ""}
+            </strong>
+            {activityData.message && <p className="hint status-copy">{activityData.message}</p>}
+            {(activityData.items_total !== null || activityData.video_title) && (
+              <p className="hint status-copy">
+                {activityData.video_title ? `${activityData.video_title} · ` : ""}
+                {activityData.items_total !== null
+                  ? `${activityData.items_completed}/${activityData.items_total}`
+                  : `${activityData.items_completed}`}
+              </p>
+            )}
+          </section>
+        )}
+
         <section className="panel panel-spacious playlist-rail">
           <div className="playlist-rail-header">
             <div>
@@ -304,25 +330,6 @@ export function PlaylistsPage() {
             </button>
           </div>
 
-          {activity.data && activity.data.operation && (
-            <section className={`status-card status-card-wide ${activity.data.is_active ? "status-live" : ""}`}>
-              <span className="status-label">
-                {activity.data.is_active ? "Current activity" : "Latest activity"}
-              </span>
-              <strong>
-                {activity.data.operation} {activity.data.playlist_title ? `· ${activity.data.playlist_title}` : ""}
-              </strong>
-              {activity.data.message && <p className="hint status-copy">{activity.data.message}</p>}
-              {(activity.data.items_total !== null || activity.data.video_title) && (
-                <p className="hint status-copy">
-                  {activity.data.video_title ? `${activity.data.video_title} · ` : ""}
-                  {activity.data.items_total !== null
-                    ? `${activity.data.items_completed}/${activity.data.items_total}`
-                    : `${activity.data.items_completed}`}
-                </p>
-              )}
-            </section>
-          )}
           {activity.isError && (
             <p className="error-text">
               Activity unavailable: {activity.error instanceof Error ? activity.error.message : "Unknown error"}
