@@ -213,6 +213,15 @@ function getVideoStatusLabel(video: {
   return "Missing";
 }
 
+function SyncIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20 12a8 8 0 1 1-2.34-5.66" />
+      <path d="M20 4v6h-6" />
+    </svg>
+  );
+}
+
 export function PlaylistsPage() {
   const { data, isLoading, isError, error } = usePlaylists();
   const cookieBrowsers = useCookieBrowsers();
@@ -595,73 +604,56 @@ export function PlaylistsPage() {
                     }`}
                     key={playlist.id}
                   >
-                  <button
-                    className="playlist-card-body"
-                    type="button"
-                    onClick={() => {
-                      setSelectedPlaylistId(playlist.id);
-                      setActiveTab("overview");
-                    }}
-                  >
-                    <div className="card-topline">
-                      <span className={`status-dot ${playlist.active ? "status-dot-active" : "status-dot-inactive"}`} aria-hidden="true" />
-                      <span className="pill">
-                        {playlist.resolution_limit ? `${playlist.resolution_limit}p` : "Best"}
-                      </span>
-                    </div>
-                    <h2>{playlist.title}</h2>
-                    <div className="playlist-progress">
-                      <div className="playlist-progress-copy">
-                        <span className="status-label">Downloaded</span>
-                        <strong>{downloadPercentage}%</strong>
-                      </div>
-                      <div className="playlist-progress-bar" aria-hidden="true">
-                        <span style={{ width: `${downloadPercentage}%` }} />
-                      </div>
-                      <p className="card-meta">
-                        {stats.downloaded}/{stats.total} videos · Added {formatRelativeTime(playlist.created_at)}
-                      </p>
-                    </div>
-                  </button>
-                  <div className="card-actions card-actions-wrap">
-                    <button
-                      className="primary-button"
-                      type="button"
-                      disabled={syncPlaylist.isPending}
-                      onClick={() => {
-                        setSelectedPlaylistId(playlist.id);
-                        setActiveTab("overview");
-                        syncPlaylist.mutate(playlist.id);
-                      }}
-                    >
-                      {syncPlaylist.isPending && selectedPlaylistId === playlist.id ? "Syncing..." : "Sync"}
-                    </button>
-                    {playlist.active ? (
+                    <div className="playlist-card-shell">
                       <button
-                        className="secondary-button"
+                        className="playlist-card-body"
                         type="button"
-                        disabled={downloadNewVideos.isPending}
                         onClick={() => {
                           setSelectedPlaylistId(playlist.id);
                           setActiveTab("overview");
-                          downloadNewVideos.mutate({
-                            playlistId: playlist.id,
-                            batchSize: Number(downloadBatchSize),
-                            cookiesBrowser:
-                              selectedPlaylistId === playlist.id
-                                ? downloadBrowser || preferredBrowser
-                                : playlist.cookies_browser || preferredBrowser,
-                          });
                         }}
                       >
-                        {downloadNewVideos.isPending && selectedPlaylistId === playlist.id
-                          ? "Downloading..."
-                          : "Download"}
+                        <div className="card-topline">
+                          <span
+                            className={`status-dot ${playlist.active ? "status-dot-active" : "status-dot-inactive"}`}
+                            aria-hidden="true"
+                          />
+                          <span className="pill">
+                            {playlist.resolution_limit ? `${playlist.resolution_limit}p` : "Best"}
+                          </span>
+                        </div>
+                        <h2>{playlist.title}</h2>
+                        <div className="playlist-progress">
+                          <div className="playlist-progress-copy">
+                            <span className="status-label">Downloaded</span>
+                            <strong>{downloadPercentage}%</strong>
+                          </div>
+                          <div className="playlist-progress-bar" aria-hidden="true">
+                            <span style={{ width: `${downloadPercentage}%` }} />
+                          </div>
+                          <p className="card-meta">
+                            {stats.downloaded}/{stats.total} videos · Added {formatRelativeTime(playlist.created_at)}
+                          </p>
+                        </div>
                       </button>
-                    ) : (
-                      <span className="view-only-note">View only</span>
-                    )}
-                  </div>
+                      <div className="card-actions card-actions-compact">
+                        <button
+                          className="icon-action-button"
+                          type="button"
+                          disabled={syncPlaylist.isPending}
+                          aria-label={`Sync ${playlist.title}`}
+                          title={syncPlaylist.isPending && selectedPlaylistId === playlist.id ? "Syncing..." : "Sync"}
+                          onClick={() => {
+                            setSelectedPlaylistId(playlist.id);
+                            setActiveTab("overview");
+                            syncPlaylist.mutate(playlist.id);
+                          }}
+                        >
+                          <SyncIcon />
+                        </button>
+                        {!playlist.active && <span className="view-only-note">View only</span>}
+                      </div>
+                    </div>
                   </article>
                 );
               })
@@ -698,106 +690,116 @@ export function PlaylistsPage() {
         </section>
 
         <section className="panel panel-spacious detail-panel">
-          <div className="eyebrow">Selected playlist</div>
-          <h2 className="detail-title">{selectedPlaylist ? selectedPlaylist.title : "Choose a playlist"}</h2>
           {selectedPlaylist ? (
             <>
-              <div className="selected-summary detail-summary">
-                <article className="selected-summary-row">
-                  <div>
-                    <span className={`status-chip ${selectedPlaylist.active ? "status-chip-active" : "status-chip-inactive"}`}>
-                      {selectedPlaylist.active ? "Active playlist" : "Inactive playlist"}
-                    </span>
+              <div className="selected-playlist-shell">
+                <div className="detail-hero detail-hero-card">
+                  <div className="detail-hero-copy">
+                    <div className="eyebrow">Selected</div>
+                    <div className="detail-heading-row">
+                      <h2 className="detail-title">{selectedPlaylist.title}</h2>
+                      <span className={`status-chip ${selectedPlaylist.active ? "status-chip-active" : "status-chip-inactive"}`}>
+                        {selectedPlaylist.active ? "Active" : "Inactive"}
+                      </span>
+                    </div>
+                    <div className="detail-tag-row">
+                      <span className="pill">{selectedPlaylist.resolution_limit ? `${selectedPlaylist.resolution_limit}p` : "Best"}</span>
+                      <span className="pill detail-pill-muted">{selectedVideos.data?.items.length ?? 0} videos</span>
+                      <span className="pill detail-pill-muted">{downloadedCount} downloaded</span>
+                    </div>
                   </div>
-                </article>
-                <article className="selected-summary-row">
-                  <div>
-                    <span className="status-label">Folder</span>
-                    <p className="card-meta">{selectedPlaylist.folder_path}</p>
-                  </div>
-                  <button
-                    className="secondary-button summary-action-button"
-                    type="button"
-                    disabled={openPlaylistFolder.isPending}
-                    onClick={() => openPlaylistFolder.mutate(selectedPlaylist.id)}
-                  >
-                    {openPlaylistFolder.isPending ? "Opening..." : "Open in Finder"}
-                  </button>
-                </article>
-                <article className="selected-summary-row">
-                  <div>
-                    <span className="status-label">Source</span>
-                    <p className="card-link">{toPlaylistUrl(selectedPlaylist.source_url)}</p>
-                  </div>
-                  <button
-                    className="secondary-button summary-action-button"
-                    type="button"
-                    onClick={() => openExternalUrl(toPlaylistUrl(selectedPlaylist.source_url))}
-                  >
-                    Open playlist
-                  </button>
-                </article>
-              </div>
 
-              <div className="detail-actions">
-                <button
-                  className="primary-button"
-                  type="button"
-                  disabled={syncPlaylist.isPending}
-                  onClick={() => syncPlaylist.mutate(selectedPlaylist.id)}
-                >
-                  {syncPlaylist.isPending ? "Syncing..." : "Sync"}
-                </button>
-                {selectedPlaylist.active && (
-                  <button
-                    className="secondary-button"
-                    type="button"
-                    disabled={downloadNewVideos.isPending}
-                    onClick={() =>
-                      downloadNewVideos.mutate({
-                        playlistId: selectedPlaylist.id,
-                        batchSize: Number(downloadBatchSize),
-                        cookiesBrowser: downloadBrowser || preferredBrowser,
-                      })
-                    }
-                  >
-                    {downloadNewVideos.isPending ? "Downloading..." : "Download"}
-                  </button>
-                )}
-                <button className="secondary-button" type="button" onClick={() => setActiveTab("settings")}>
-                  Open settings
-                </button>
-              </div>
-
-              {selectedPlaylist.active ? (
-                <div className="download-batch-row">
-                  <label>
-                    Batch size
-                    <select
-                      value={downloadBatchSize}
-                      onChange={(event) => setDownloadBatchSize(event.target.value)}
+                  <div className="detail-actions">
+                    <button
+                      className="primary-button"
+                      type="button"
+                      disabled={syncPlaylist.isPending}
+                      onClick={() => syncPlaylist.mutate(selectedPlaylist.id)}
                     >
-                      {batchSizeOptions.map((option) => (
-                        <option key={option} value={option.toString()}>
-                          {option} {option === 1 ? "video" : "videos"}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Browser for `yt-dlp`
-                    <select value={downloadBrowser} onChange={(event) => setDownloadBrowser(event.target.value)}>
-                      {browserOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                      {syncPlaylist.isPending ? "Syncing..." : "Sync"}
+                    </button>
+                    {selectedPlaylist.active && (
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        disabled={downloadNewVideos.isPending}
+                        onClick={() =>
+                          downloadNewVideos.mutate({
+                            playlistId: selectedPlaylist.id,
+                            batchSize: Number(downloadBatchSize),
+                            cookiesBrowser: downloadBrowser || preferredBrowser,
+                          })
+                        }
+                      >
+                        {downloadNewVideos.isPending ? "Downloading..." : "Download"}
+                      </button>
+                    )}
+                    <button className="secondary-button" type="button" onClick={() => setActiveTab("settings")}>
+                      Settings
+                    </button>
+                  </div>
                 </div>
-              ) : (
-                <p className="hint">Inactive playlists stay view-only. You can still sync them from YouTube.</p>
-              )}
+
+                <div className="detail-side-stack">
+                  <div className="selected-summary detail-summary">
+                    <article className="selected-summary-card">
+                      <span className="status-label">Folder</span>
+                      <p className="card-meta">{selectedPlaylist.folder_path}</p>
+                      <button
+                        className="secondary-button summary-action-button"
+                        type="button"
+                        disabled={openPlaylistFolder.isPending}
+                        onClick={() => openPlaylistFolder.mutate(selectedPlaylist.id)}
+                      >
+                        {openPlaylistFolder.isPending ? "Opening..." : "Open in Finder"}
+                      </button>
+                    </article>
+                    <article className="selected-summary-card">
+                      <span className="status-label">Source</span>
+                      <p className="card-link">{toPlaylistUrl(selectedPlaylist.source_url)}</p>
+                      <button
+                        className="secondary-button summary-action-button"
+                        type="button"
+                        onClick={() => openExternalUrl(toPlaylistUrl(selectedPlaylist.source_url))}
+                      >
+                        Open playlist
+                      </button>
+                    </article>
+                  </div>
+
+                  {selectedPlaylist.active ? (
+                    <section className="detail-control-card">
+                      <div className="download-batch-row detail-controls">
+                        <label>
+                          Batch size
+                          <select
+                            value={downloadBatchSize}
+                            onChange={(event) => setDownloadBatchSize(event.target.value)}
+                          >
+                            {batchSizeOptions.map((option) => (
+                              <option key={option} value={option.toString()}>
+                                {option} {option === 1 ? "video" : "videos"}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Browser for `yt-dlp`
+                          <select value={downloadBrowser} onChange={(event) => setDownloadBrowser(event.target.value)}>
+                            {browserOptions.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                    </section>
+                  ) : (
+                    <p className="hint detail-inline-hint">Inactive playlists stay visible and can still sync.</p>
+                  )}
+                </div>
+              </div>
               {cookieBrowsers.data?.unsupported_installed.length ? (
                 <p className="hint">
                   Installed but not exposed by `yt-dlp`: {cookieBrowsers.data.unsupported_installed.join(", ")}.
@@ -996,7 +998,11 @@ export function PlaylistsPage() {
               )}
             </>
           ) : (
-            <div className="empty-detail-state">No playlist selected.</div>
+            <>
+              <div className="eyebrow">Selected</div>
+              <h2 className="detail-title">Choose a playlist</h2>
+              <p className="hint">Select one from the left to inspect videos, downloads, and settings.</p>
+            </>
           )}
         </section>
       </div>
