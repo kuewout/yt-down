@@ -8,6 +8,7 @@ import {
   useDownloadNewVideos,
   usePlaylistVideos,
   usePlaylists,
+  useOpenPlaylistFolder,
   useRescanLibrary,
   useSyncPlaylist,
   useUpdatePlaylist,
@@ -93,10 +94,6 @@ function openExternalUrl(url: string) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
-function openFolderPath(folderPath: string) {
-  openExternalUrl(`file://${encodeURI(folderPath)}`);
-}
-
 export function PlaylistsPage() {
   const { data, isLoading, isError, error } = usePlaylists();
   const videos = useVideos();
@@ -104,6 +101,7 @@ export function PlaylistsPage() {
   const createPlaylist = useCreatePlaylist();
   const syncPlaylist = useSyncPlaylist();
   const downloadNewVideos = useDownloadNewVideos();
+  const openPlaylistFolder = useOpenPlaylistFolder();
   const rescanLibrary = useRescanLibrary();
   const updatePlaylist = useUpdatePlaylist();
   const deletePlaylist = useDeletePlaylist();
@@ -227,8 +225,7 @@ export function PlaylistsPage() {
               <div className="eyebrow">Tracked playlists</div>
               <h1>Playlists</h1>
               <p className="lede">
-                Keep the page centered on what matters most: choose a playlist, sync it, and pull
-                in new videos when they appear.
+                Sync playlists and pull in new videos when they appear.
               </p>
             </div>
             <div className="playlist-rail-actions">
@@ -252,12 +249,12 @@ export function PlaylistsPage() {
               <strong>{playlistCount}</strong>
             </article>
             <article className="summary-card">
-              <span className="status-label">Focused</span>
-              <strong>{selectedPlaylist ? selectedPlaylist.title : "None selected"}</strong>
-            </article>
-            <article className="summary-card">
               <span className="status-label">Missing</span>
               <strong>{selectedPlaylist ? missingCount : 0}</strong>
+            </article>
+            <article className="summary-card">
+              <span className="status-label">Downloaded</span>
+              <strong>{selectedPlaylist ? downloadedCount : 0}</strong>
             </article>
           </div>
 
@@ -428,9 +425,10 @@ export function PlaylistsPage() {
                   <button
                     className="secondary-button summary-action-button"
                     type="button"
-                    onClick={() => openFolderPath(selectedPlaylist.folder_path)}
+                    disabled={openPlaylistFolder.isPending}
+                    onClick={() => openPlaylistFolder.mutate(selectedPlaylist.id)}
                   >
-                    Open in Finder
+                    {openPlaylistFolder.isPending ? "Opening..." : "Open in Finder"}
                   </button>
                 </article>
                 <article className="selected-summary-row">
@@ -500,10 +498,6 @@ export function PlaylistsPage() {
                     ))}
                   </select>
                 </label>
-                <p className="hint">
-                  Each run attempts at most {downloadBatchSize} missing videos and uses{" "}
-                  {BROWSER_OPTIONS.find((option) => option.value === downloadBrowser)?.label ?? "No browser cookies"}.
-                </p>
               </div>
 
               <div className="tab-row" role="tablist" aria-label="Playlist detail sections">
@@ -658,6 +652,12 @@ export function PlaylistsPage() {
                     </p>
                   )}
                 </form>
+              )}
+              {openPlaylistFolder.isError && (
+                <p className="error-text">
+                  Failed to open folder:{" "}
+                  {openPlaylistFolder.error instanceof Error ? openPlaylistFolder.error.message : "Unknown error"}
+                </p>
               )}
             </>
           ) : (

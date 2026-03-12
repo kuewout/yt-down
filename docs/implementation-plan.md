@@ -66,6 +66,10 @@ Last updated: 2026-03-12
 - The app shell now has:
   - a redesigned collapsible left rail for desktop
   - a dedicated mobile top bar and navigation sheet instead of collapsing the desktop rail into a cramped mobile header
+- The playlists UI now shows cleaner cards and detail actions:
+  - playlist cards emphasize download percentage and relative added time instead of repeating folder/source strings
+  - the selected playlist panel can open the playlist folder through a backend system-explorer action
+  - the selected playlist panel opens the canonical YouTube playlist URL instead of the watch URL
 - Playlist creation is simplified:
   - URL-first flow
   - optional title/folder input
@@ -76,6 +80,7 @@ Last updated: 2026-03-12
 ### Implemented But Not Fully Verified End-to-End
 
 - Browser-level verification of the frontend flows has not been completed in this doc cycle.
+- Live verification of the new backend-backed `Open in Finder` action is still needed.
 - Live end-to-end verification of:
   - create playlist
   - sync playlist

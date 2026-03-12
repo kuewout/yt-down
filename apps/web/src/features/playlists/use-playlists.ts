@@ -8,6 +8,7 @@ import {
   fetchPlaylistVideos,
   fetchPlaylists,
   fetchVideos,
+  openPlaylistFolder,
   rescanLibrary,
   syncPlaylist,
   type CreatePlaylistInput,
@@ -137,5 +138,11 @@ export function useRescanLibrary() {
         queryClient.invalidateQueries({ queryKey: ["videos"] }),
       ]);
     },
+  });
+}
+
+export function useOpenPlaylistFolder() {
+  return useMutation({
+    mutationFn: (playlistId: string) => openPlaylistFolder(playlistId),
   });
 }

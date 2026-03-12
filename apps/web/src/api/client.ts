@@ -203,6 +203,12 @@ export async function deletePlaylist(playlistId: string): Promise<void> {
   });
 }
 
+export async function openPlaylistFolder(playlistId: string): Promise<void> {
+  await request<void>(`/playlists/${playlistId}/open-folder`, {
+    method: "POST",
+  });
+}
+
 export async function rescanLibrary(): Promise<LibraryRescanResponse> {
   return request<LibraryRescanResponse>("/library/rescan", {
     method: "POST",

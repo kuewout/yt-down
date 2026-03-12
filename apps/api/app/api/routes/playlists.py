@@ -1,3 +1,6 @@
+import platform
+import subprocess
+from pathlib import Path
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -169,6 +172,34 @@ def download_new_videos_route(
         "downloaded_videos": downloaded_count,
         "failed_videos": failed_count,
     }
+
+
+@router.post("/{playlist_id}/open-folder", status_code=status.HTTP_204_NO_CONTENT)
+def open_playlist_folder(playlist_id: UUID, db: Session = Depends(get_db)) -> Response:
+    playlist = db.get(Playlist, playlist_id)
+    if playlist is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Playlist not found")
+
+    folder_path = Path(playlist.folder_path).expanduser().resolve()
+    if not folder_path.exists() or not folder_path.is_dir():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Playlist folder does not exist")
+
+    system = platform.system()
+    if system == "Darwin":
+        command = ["open", str(folder_path)]
+    elif system == "Windows":
+        command = ["explorer", str(folder_path)]
+    else:
+        command = ["xdg-open", str(folder_path)]
+
+    try:
+        subprocess.run(command, check=True)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="System file explorer is unavailable") from exc
+    except subprocess.CalledProcessError as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to open playlist folder") from exc
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.delete("/{playlist_id}", status_code=status.HTTP_204_NO_CONTENT)
