@@ -36,14 +36,16 @@ a {
 }
 
 .app-shell {
+  --sidebar-width: 292px;
   display: grid;
-  grid-template-columns: 292px minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   min-height: 100vh;
   transition: grid-template-columns 180ms ease;
 }
 
 .app-shell.sidebar-collapsed {
-  grid-template-columns: 104px minmax(0, 1fr);
+  --sidebar-width: 104px;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
 }
 
 .sidebar {
@@ -51,6 +53,7 @@ a {
   align-content: start;
   gap: 14px;
   padding: 20px 16px;
+  padding-bottom: 92px;
   min-height: 100vh;
   height: 100vh;
   border-right: 1px solid rgba(53, 44, 34, 0.08);
@@ -60,10 +63,6 @@ a {
   backdrop-filter: blur(22px);
   position: sticky;
   top: 0;
-}
-
-.sidebar-spacer {
-  min-height: 12px;
 }
 
 .brand-card {
@@ -262,17 +261,27 @@ a {
     linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(248, 243, 234, 0.84));
 }
 
-.sidebar-bottom {
-  display: grid;
-  justify-items: center;
-  gap: 10px;
-  margin-top: auto;
-  padding-top: 16px;
-  border-top: 1px solid rgba(53, 44, 34, 0.08);
-}
-
 .sidebar-meta p {
   margin: 0;
+}
+
+.desktop-rail-toggle-shell {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  z-index: 16;
+  width: var(--sidebar-width);
+  padding: 14px 16px 18px;
+  display: grid;
+  justify-items: center;
+  pointer-events: none;
+}
+
+.desktop-rail-toggle {
+  pointer-events: auto;
+  box-shadow:
+    0 18px 32px rgba(43, 34, 24, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.56);
 }
 
 .mobile-topbar,
@@ -321,8 +330,7 @@ a {
   height: 50px;
 }
 
-.app-shell.sidebar-collapsed .sidebar-meta,
-.app-shell.sidebar-collapsed .sidebar-bottom > :not(.sidebar-toggle) {
+.app-shell.sidebar-collapsed .sidebar-meta {
   display: none;
 }
 
@@ -412,7 +420,8 @@ a {
 }
 
 .activity-overlay-collapsed {
-  width: min(320px, calc(100vw - 32px));
+  width: 132px;
+  padding: 12px 14px;
 }
 
 .activity-overlay-expanded {
@@ -471,12 +480,24 @@ a {
   overflow: auto;
 }
 
-.activity-overlay-collapsed .activity-console {
-  max-height: 72px;
+.activity-collapsed-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 10px;
 }
 
-.activity-overlay-collapsed .activity-log-entry:not(:first-child) {
-  display: none;
+.activity-collapsed-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(110, 98, 86, 0.6);
+  box-shadow: 0 0 0 6px rgba(110, 98, 86, 0.12);
+}
+
+.activity-collapsed-dot.is-live {
+  background: var(--accent);
+  box-shadow: 0 0 0 6px rgba(15, 118, 110, 0.12);
 }
 
 .activity-log-entry {
@@ -1076,10 +1097,15 @@ a {
 
 @media (max-width: 860px) {
   .app-shell {
+    --sidebar-width: 0px;
     grid-template-columns: 1fr;
   }
 
   .sidebar {
+    display: none;
+  }
+
+  .desktop-rail-toggle-shell {
     display: none;
   }
 

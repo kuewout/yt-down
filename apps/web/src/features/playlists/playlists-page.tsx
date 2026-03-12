@@ -348,22 +348,28 @@ export function PlaylistsPage() {
                 {isActivityExpanded ? "Hide" : "Show"}
               </button>
             </div>
-            <div className="activity-console">
-              {activityLog.length ? (
-                activityLog.map((entry) => (
-                  <article key={entry.key} className={`activity-log-entry ${entry.isActive ? "is-live" : ""}`}>
-                    <span className="activity-log-time">{formatLogTime(entry.createdAt)}</span>
-                    <div className="activity-log-copy">
-                      <strong>{entry.title}</strong>
-                      {entry.detail && <p className="hint status-copy">{entry.detail}</p>}
-                    </div>
-                    {entry.counter && <span className="activity-log-counter">{entry.counter}</span>}
-                  </article>
-                ))
-              ) : (
-                <p className="hint status-copy">No recent activity yet.</p>
-              )}
-            </div>
+            {isActivityExpanded ? (
+              <div className="activity-console">
+                {activityLog.length ? (
+                  activityLog.map((entry) => (
+                    <article key={entry.key} className={`activity-log-entry ${entry.isActive ? "is-live" : ""}`}>
+                      <span className="activity-log-time">{formatLogTime(entry.createdAt)}</span>
+                      <div className="activity-log-copy">
+                        <strong>{entry.title}</strong>
+                        {entry.detail && <p className="hint status-copy">{entry.detail}</p>}
+                      </div>
+                      {entry.counter && <span className="activity-log-counter">{entry.counter}</span>}
+                    </article>
+                  ))
+                ) : (
+                  <p className="hint status-copy">No recent activity yet.</p>
+                )}
+              </div>
+            ) : (
+              <div className="activity-collapsed-indicator" aria-hidden="true">
+                <span className={`activity-collapsed-dot ${activityData.is_active ? "is-live" : ""}`} />
+              </div>
+            )}
           </section>
         )}
 
