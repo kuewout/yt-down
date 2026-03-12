@@ -16,6 +16,8 @@ def download_missing_videos(
     playlist = db.get(Playlist, playlist_id)
     if playlist is None:
         raise ValueError("Playlist not found")
+    if not playlist.active:
+        raise ValueError("Inactive playlists cannot download videos")
 
     missing_videos = db.scalars(
         select(Video)

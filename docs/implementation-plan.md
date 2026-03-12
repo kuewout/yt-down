@@ -41,6 +41,7 @@ Last updated: 2026-03-12
   - `POST /api/playlists/{id}/download-new`
   - request-level batch size, defaulting to 5 videos per run
   - request-level browser selection for `yt-dlp` cookie extraction
+  - inactive-playlist protection at the API layer
   - `yt-dlp` download execution
   - safer format selection using combined video/audio fallbacks
   - retry without browser cookies if a cookie-backed attempt fails
@@ -70,6 +71,12 @@ Last updated: 2026-03-12
   - playlist cards emphasize download percentage and relative added time instead of repeating folder/source strings
   - the selected playlist panel can open the playlist folder through a backend system-explorer action
   - the selected playlist panel opens the canonical YouTube playlist URL instead of the watch URL
+- The playlist page now supports active and inactive states:
+  - the default rail view shows active playlists only
+  - a separate inactive view lists paused playlists
+  - inactive playlists remain syncable but are view-only for downloads
+  - playlist settings now include an active/inactive toggle
+  - active/inactive cards are differentiated visually without reusing the old `Active` label on every card
 - Playlist creation is simplified:
   - URL-first flow
   - optional title/folder input
@@ -84,7 +91,9 @@ Last updated: 2026-03-12
 - Live end-to-end verification of:
   - create playlist
   - sync playlist
-  - download new videos
+  - active/inactive toggle behavior
+  - blocked download behavior for inactive playlists
+  - download flow for active playlists
   - activity display during sync/download/rescan
   - playlist edit/remove
   - library rescan
