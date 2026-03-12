@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.models import Playlist, Video
@@ -13,6 +13,24 @@ from app.services.ytdlp import YtDlpError, download_video, normalize_cookies_bro
 
 
 logger = logging.getLogger(__name__)
+
+UNDOWNLOADABLE_PATTERNS = (
+    "members-only",
+    "member only",
+    "premium_only",
+    "subscriber_only",
+    "private video",
+    "video is private",
+    "join this channel",
+    "become a member",
+    "会员专享",
+    "成为此频道的会员",
+)
+
+
+def _is_undownloadable_error(message: str) -> bool:
+    normalized = message.lower()
+    return any(pattern in normalized for pattern in UNDOWNLOADABLE_PATTERNS)
 
 
 def download_missing_videos(
@@ -26,7 +44,14 @@ def download_missing_videos(
 
     missing_videos = db.scalars(
         select(Video)
-        .where(Video.playlist_id == playlist_id, Video.downloaded.is_(False))
+        .where(
+            Video.playlist_id == playlist_id,
+            Video.downloaded.is_(False),
+            or_(
+                Video.download_error.is_(None),
+                ~Video.download_error.startswith("UNDOWNLOADABLE: "),
+            ),
+        )
         .order_by(Video.upload_date.asc().nullsfirst(), Video.created_at.asc())
         .limit(batch_size)
     ).all()
@@ -102,15 +127,18 @@ def download_missing_videos(
                     progress_callback=handle_progress,
                 )
             except YtDlpError as exc:
+                error_message = str(exc)
+                if _is_undownloadable_error(error_message):
+                    error_message = f"UNDOWNLOADABLE: {error_message}"
                 video.downloaded = False
                 video.local_path = None
-                video.download_error = str(exc)
+                video.download_error = error_message
                 failed_count += 1
                 logger.warning(
                     "Download failed video=%s cookies_browser=%s error=%s",
                     video.title,
                     browser_label,
-                    exc,
+                    error_message,
                 )
                 activity_registry.update(
                     video_id=video.id,
@@ -123,6 +151,8 @@ def download_missing_videos(
             video.local_path = result.local_path
             video.downloaded = True
             video.downloaded_at = datetime.now(UTC)
+            if result.upload_date is not None:
+                video.upload_date = result.upload_date.date()
             video.download_error = None
             downloaded_count += 1
             logger.info(

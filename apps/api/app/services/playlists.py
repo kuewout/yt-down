@@ -11,7 +11,7 @@ from app.core.config import settings
 from app.models import Playlist, Video
 from app.services.activity import activity_registry
 from app.services.library import relink_playlist_videos
-from app.services.ytdlp import PlaylistEntry, PlaylistSnapshot, YtDlpError, fetch_flat_playlist
+from app.services.ytdlp import PlaylistSnapshot, YtDlpError, fetch_flat_playlist
 
 
 def build_folder_path(folder_name: str) -> str:
@@ -154,12 +154,6 @@ def _upsert_playlist_entries(db: Session, playlist: Playlist, snapshot: Playlist
     created_count = 0
     now = datetime.now(UTC)
     for entry in snapshot.entries:
-        if not _is_syncable_entry(entry):
-            existing_video = existing_videos.get(entry.video_id)
-            if existing_video is not None and not existing_video.downloaded:
-                db.delete(existing_video)
-            continue
-
         # yt-dlp flat playlist results can contain duplicate video IDs.
         # Treat later occurrences as metadata refreshes for the same row.
         video = existing_videos.get(entry.video_id)
@@ -189,11 +183,6 @@ def _upsert_playlist_entries(db: Session, playlist: Playlist, snapshot: Playlist
         video.metadata_json = entry.metadata_json
 
     return created_count
-
-
-def _is_syncable_entry(entry: PlaylistEntry) -> bool:
-    availability = str(entry.metadata_json.get("availability") or "").strip().lower()
-    return availability not in {"needs_auth", "premium_only", "private", "subscriber_only"}
 
 
 def list_playlist_videos(db: Session, playlist_id: UUID) -> list[Video]:

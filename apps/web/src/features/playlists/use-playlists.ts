@@ -1,17 +1,19 @@
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
+  ACTIVITY_STREAM_URL,
   createPlaylist,
   deletePlaylist,
   downloadNewVideos,
   fetchCookieBrowsers,
-  fetchActivity,
   fetchPlaylistVideos,
   fetchPlaylists,
   fetchVideos,
   openPlaylistFolder,
   rescanLibrary,
   syncPlaylist,
+  type ActivityResponse,
   type CreatePlaylistInput,
   type UpdatePlaylistInput,
   updatePlaylist,
@@ -33,11 +35,54 @@ export function useCookieBrowsers() {
 }
 
 export function useActivity() {
-  return useQuery({
-    queryKey: ["activity"],
-    queryFn: fetchActivity,
-    refetchInterval: 1000,
-  });
+  const [data, setData] = useState<ActivityResponse | undefined>(undefined);
+  const [error, setError] = useState<Error | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let closed = false;
+    const eventSource = new EventSource(ACTIVITY_STREAM_URL);
+
+    const handleMessage = (event: MessageEvent<string>) => {
+      try {
+        const payload = JSON.parse(event.data) as ActivityResponse;
+        if (closed) {
+          return;
+        }
+        setData(payload);
+        setError(null);
+        setIsLoading(false);
+      } catch (parseError) {
+        if (closed) {
+          return;
+        }
+        setError(parseError instanceof Error ? parseError : new Error("Invalid activity payload"));
+        setIsLoading(false);
+      }
+    };
+
+    eventSource.addEventListener("activity", handleMessage);
+    eventSource.onerror = () => {
+      if (closed || eventSource.readyState !== EventSource.CLOSED) {
+        return;
+      }
+      setError(new Error("Activity stream disconnected"));
+      setIsLoading(false);
+    };
+
+    return () => {
+      closed = true;
+      eventSource.removeEventListener("activity", handleMessage);
+      eventSource.close();
+    };
+  }, []);
+
+  return {
+    data,
+    error,
+    isError: Boolean(error),
+    isLoading,
+  };
 }
 
 export function useCreatePlaylist() {

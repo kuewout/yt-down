@@ -51,6 +51,7 @@ class PlaylistSnapshot:
 @dataclass
 class DownloadResult:
     local_path: str
+    upload_date: datetime | None
 
 
 def normalize_cookies_browser(browser: str | None) -> str | None:
@@ -148,12 +149,18 @@ def _run_yt_dlp_command(
     if return_code != 0:
         raise YtDlpError("\n".join(stderr_lines).strip() or "yt-dlp failed to download video")
 
-    lines = stdout_lines
-    local_path = lines[-1] if lines else ""
+    local_path = ""
+    upload_date: datetime | None = None
+    for line in stdout_lines:
+        if line.startswith("YT_DOWN_UPLOAD_DATE:"):
+            upload_date = _parse_upload_date(line.removeprefix("YT_DOWN_UPLOAD_DATE:").strip() or None)
+        elif line.startswith("YT_DOWN_FILEPATH:"):
+            local_path = line.removeprefix("YT_DOWN_FILEPATH:").strip()
+
     if not local_path:
         raise YtDlpError("yt-dlp did not report a downloaded file path")
 
-    return DownloadResult(local_path=str(Path(local_path)))
+    return DownloadResult(local_path=str(Path(local_path)), upload_date=upload_date)
 
 
 def _parse_upload_date(value: str | None) -> datetime | None:
@@ -168,9 +175,28 @@ def _parse_upload_date(value: str | None) -> datetime | None:
     return parsed.replace(tzinfo=UTC)
 
 
+def _load_json_payload(result: subprocess.CompletedProcess[str], error_message: str) -> dict | None:
+    if result.returncode != 0 and not result.stdout.strip():
+        raise YtDlpError(result.stderr.strip() or error_message)
+
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        raise YtDlpError(result.stderr.strip() or error_message) from exc
+
+    if payload is None:
+        return None
+    if not isinstance(payload, dict):
+        raise YtDlpError(result.stderr.strip() or error_message)
+    return payload
+
+
 def fetch_flat_playlist(url: str) -> PlaylistSnapshot:
     cmd = [
         "yt-dlp",
+        "--flat-playlist",
+        "--ignore-errors",
+        "--no-abort-on-error",
         "--compat-options",
         "no-youtube-unavailable-videos",
         "--extractor-args",
@@ -179,10 +205,10 @@ def fetch_flat_playlist(url: str) -> PlaylistSnapshot:
         url,
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-    if result.returncode != 0:
-        raise YtDlpError(result.stderr.strip() or "yt-dlp failed to fetch playlist metadata")
+    payload = _load_json_payload(result, "yt-dlp failed to fetch playlist metadata")
+    if payload is None:
+        raise YtDlpError(result.stderr.strip() or "yt-dlp did not return playlist metadata")
 
-    payload = json.loads(result.stdout)
     entries: list[PlaylistEntry] = []
     for raw_entry in payload.get("entries", []):
         video_id = raw_entry.get("id")
@@ -224,7 +250,9 @@ def download_video(
     base_cmd = [
         "yt-dlp",
         "--print",
-        "after_move:filepath",
+        "before_dl:YT_DOWN_UPLOAD_DATE:%(upload_date)s",
+        "--print",
+        "after_move:YT_DOWN_FILEPATH:%(filepath)s",
         "-f",
         _build_format_selector(resolution_limit),
         "-o",
@@ -234,7 +262,15 @@ def download_video(
     if cookies_browser:
         try:
             return _run_yt_dlp_command(
-                ["yt-dlp", "--print", "after_move:filepath", "--cookies-from-browser", cookies_browser]
+                [
+                    "yt-dlp",
+                    "--print",
+                    "before_dl:YT_DOWN_UPLOAD_DATE:%(upload_date)s",
+                    "--print",
+                    "after_move:YT_DOWN_FILEPATH:%(filepath)s",
+                    "--cookies-from-browser",
+                    cookies_browser,
+                ]
                 + ["-f", _build_format_selector(resolution_limit), "-o", output_template, url],
                 progress_callback=progress_callback,
             )

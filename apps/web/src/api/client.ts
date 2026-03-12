@@ -113,6 +113,8 @@ export type LibraryRescanResponse = {
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api";
 
+export const ACTIVITY_STREAM_URL = `${API_BASE_URL}/activity/stream`;
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {

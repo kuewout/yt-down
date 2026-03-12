@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from threading import Lock
+from threading import Condition
 from uuid import UUID
 
 
@@ -25,12 +25,26 @@ class ActivitySnapshot:
 
 class ActivityRegistry:
     def __init__(self) -> None:
-        self._lock = Lock()
+        self._condition = Condition()
         self._snapshot = ActivitySnapshot()
+        self._version = 0
 
     def snapshot(self) -> ActivitySnapshot:
-        with self._lock:
+        with self._condition:
             return ActivitySnapshot(**self._snapshot.__dict__)
+
+    def current_version(self) -> int:
+        with self._condition:
+            return self._version
+
+    def wait_for_change(self, version: int, timeout: float = 15.0) -> tuple[int, ActivitySnapshot]:
+        with self._condition:
+            self._condition.wait_for(lambda: self._version != version, timeout=timeout)
+            return self._version, ActivitySnapshot(**self._snapshot.__dict__)
+
+    def _publish_locked(self) -> None:
+        self._version += 1
+        self._condition.notify_all()
 
     def start(
         self,
@@ -42,7 +56,7 @@ class ActivityRegistry:
         items_total: int | None = None,
     ) -> None:
         now = datetime.now(UTC)
-        with self._lock:
+        with self._condition:
             self._snapshot = ActivitySnapshot(
                 status="running",
                 operation=operation,
@@ -56,6 +70,7 @@ class ActivityRegistry:
                 updated_at=now,
                 finished_at=None,
             )
+            self._publish_locked()
 
     def update(
         self,
@@ -69,7 +84,7 @@ class ActivityRegistry:
         items_total: int | None = None,
     ) -> None:
         now = datetime.now(UTC)
-        with self._lock:
+        with self._condition:
             if playlist_id is not None:
                 self._snapshot.playlist_id = playlist_id
             if playlist_title is not None:
@@ -85,10 +100,11 @@ class ActivityRegistry:
             if items_total is not None:
                 self._snapshot.items_total = items_total
             self._snapshot.updated_at = now
+            self._publish_locked()
 
     def complete(self, *, message: str | None = None, items_completed: int | None = None) -> None:
         now = datetime.now(UTC)
-        with self._lock:
+        with self._condition:
             self._snapshot.status = "succeeded"
             self._snapshot.is_active = False
             self._snapshot.message = message
@@ -98,15 +114,17 @@ class ActivityRegistry:
             self._snapshot.finished_at = now
             self._snapshot.video_id = None
             self._snapshot.video_title = None
+            self._publish_locked()
 
     def fail(self, message: str) -> None:
         now = datetime.now(UTC)
-        with self._lock:
+        with self._condition:
             self._snapshot.status = "failed"
             self._snapshot.is_active = False
             self._snapshot.message = message
             self._snapshot.updated_at = now
             self._snapshot.finished_at = now
+            self._publish_locked()
 
 
 activity_registry = ActivityRegistry()
