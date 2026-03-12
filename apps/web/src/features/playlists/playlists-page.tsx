@@ -349,9 +349,6 @@ export function PlaylistsPage() {
                 <span className="status-label">Latest activity</span>
                 {activityData.is_active && <span className="activity-live-pill">Live</span>}
               </div>
-              <span className="activity-toggle-button" aria-hidden="true">
-                {isActivityExpanded ? "Hide" : "Show"}
-              </span>
             </div>
             {isActivityExpanded ? (
               <div className="activity-console">
