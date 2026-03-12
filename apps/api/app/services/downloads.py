@@ -14,13 +14,16 @@ from app.services.ytdlp import YtDlpError, download_video, normalize_cookies_bro
 
 logger = logging.getLogger(__name__)
 
+UNDOWNLOADABLE_PREFIX = "UNDOWNLOADABLE: "
 UNDOWNLOADABLE_PATTERNS = (
     "members-only",
     "member only",
+    "members-only content",
     "premium_only",
     "subscriber_only",
     "private video",
     "video is private",
+    "this video is available to this channel's members",
     "join this channel",
     "become a member",
     "会员专享",
@@ -49,7 +52,7 @@ def download_missing_videos(
             Video.downloaded.is_(False),
             or_(
                 Video.download_error.is_(None),
-                ~Video.download_error.startswith("UNDOWNLOADABLE: "),
+                ~Video.download_error.like(f"{UNDOWNLOADABLE_PREFIX}%"),
             ),
         )
         .order_by(Video.upload_date.asc().nullsfirst(), Video.created_at.asc())
@@ -129,7 +132,7 @@ def download_missing_videos(
             except YtDlpError as exc:
                 error_message = str(exc)
                 if _is_undownloadable_error(error_message):
-                    error_message = f"UNDOWNLOADABLE: {error_message}"
+                    error_message = f"{UNDOWNLOADABLE_PREFIX}{error_message}"
                 video.downloaded = False
                 video.local_path = None
                 video.download_error = error_message
