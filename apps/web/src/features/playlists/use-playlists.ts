@@ -7,6 +7,7 @@ import {
   fetchActivity,
   fetchPlaylistVideos,
   fetchPlaylists,
+  fetchVideos,
   rescanLibrary,
   syncPlaylist,
   type CreatePlaylistInput,
@@ -49,6 +50,7 @@ export function useSyncPlaylist() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["playlists"] }),
         queryClient.invalidateQueries({ queryKey: ["playlist-videos", playlistId] }),
+        queryClient.invalidateQueries({ queryKey: ["videos"] }),
       ]);
     },
   });
@@ -59,6 +61,13 @@ export function usePlaylistVideos(playlistId: string | null) {
     queryKey: ["playlist-videos", playlistId],
     queryFn: () => fetchPlaylistVideos(playlistId!),
     enabled: Boolean(playlistId),
+  });
+}
+
+export function useVideos() {
+  return useQuery({
+    queryKey: ["videos"],
+    queryFn: fetchVideos,
   });
 }
 
@@ -79,6 +88,7 @@ export function useDownloadNewVideos() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["playlists"] }),
         queryClient.invalidateQueries({ queryKey: ["playlist-videos", variables.playlistId] }),
+        queryClient.invalidateQueries({ queryKey: ["videos"] }),
       ]);
     },
   });
@@ -94,6 +104,7 @@ export function useUpdatePlaylist() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["playlists"] }),
         queryClient.invalidateQueries({ queryKey: ["playlist-videos", variables.playlistId] }),
+        queryClient.invalidateQueries({ queryKey: ["videos"] }),
       ]);
     },
   });
@@ -108,6 +119,7 @@ export function useDeletePlaylist() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["playlists"] }),
         queryClient.invalidateQueries({ queryKey: ["playlist-videos"] }),
+        queryClient.invalidateQueries({ queryKey: ["videos"] }),
       ]);
     },
   });
@@ -122,6 +134,7 @@ export function useRescanLibrary() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["playlists"] }),
         queryClient.invalidateQueries({ queryKey: ["playlist-videos"] }),
+        queryClient.invalidateQueries({ queryKey: ["videos"] }),
       ]);
     },
   });

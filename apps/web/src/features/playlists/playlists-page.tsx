@@ -11,6 +11,7 @@ import {
   useRescanLibrary,
   useSyncPlaylist,
   useUpdatePlaylist,
+  useVideos,
 } from "./use-playlists";
 
 type FormState = {
@@ -41,8 +42,64 @@ const detailTabs: Array<{ key: DetailTab; label: string }> = [
   { key: "settings", label: "Settings" },
 ];
 
+function formatRelativeTime(timestamp: string): string {
+  const value = new Date(timestamp).getTime();
+  if (Number.isNaN(value)) {
+    return "Unknown";
+  }
+
+  const diffMs = value - Date.now();
+  const diffMinutes = Math.round(diffMs / 60000);
+  const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+
+  if (Math.abs(diffMinutes) < 60) {
+    return formatter.format(diffMinutes, "minute");
+  }
+
+  const diffHours = Math.round(diffMinutes / 60);
+  if (Math.abs(diffHours) < 24) {
+    return formatter.format(diffHours, "hour");
+  }
+
+  const diffDays = Math.round(diffHours / 24);
+  if (Math.abs(diffDays) < 30) {
+    return formatter.format(diffDays, "day");
+  }
+
+  const diffMonths = Math.round(diffDays / 30);
+  if (Math.abs(diffMonths) < 12) {
+    return formatter.format(diffMonths, "month");
+  }
+
+  const diffYears = Math.round(diffDays / 365);
+  return formatter.format(diffYears, "year");
+}
+
+function toPlaylistUrl(sourceUrl: string): string {
+  try {
+    const url = new URL(sourceUrl);
+    const listId = url.searchParams.get("list");
+    if (listId) {
+      return `https://www.youtube.com/playlist?list=${encodeURIComponent(listId)}`;
+    }
+  } catch {
+    return sourceUrl;
+  }
+
+  return sourceUrl;
+}
+
+function openExternalUrl(url: string) {
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+function openFolderPath(folderPath: string) {
+  openExternalUrl(`file://${encodeURI(folderPath)}`);
+}
+
 export function PlaylistsPage() {
   const { data, isLoading, isError, error } = usePlaylists();
+  const videos = useVideos();
   const activity = useActivity();
   const createPlaylist = useCreatePlaylist();
   const syncPlaylist = useSyncPlaylist();
@@ -64,6 +121,19 @@ export function PlaylistsPage() {
   const failedCount =
     selectedVideos.data?.items.filter((video) => !video.downloaded && Boolean(video.download_error)).length ?? 0;
   const missingCount = (selectedVideos.data?.items.length ?? 0) - downloadedCount;
+  const videoStatsByPlaylist = new Map<string, { total: number; downloaded: number; failed: number }>();
+
+  videos.data?.items.forEach((video) => {
+    const current = videoStatsByPlaylist.get(video.playlist_id) ?? { total: 0, downloaded: 0, failed: 0 };
+    current.total += 1;
+    if (video.downloaded) {
+      current.downloaded += 1;
+    }
+    if (!video.downloaded && video.download_error) {
+      current.failed += 1;
+    }
+    videoStatsByPlaylist.set(video.playlist_id, current);
+  });
 
   useEffect(() => {
     if (selectedPlaylistId || !data?.items.length) {
@@ -243,11 +313,12 @@ export function PlaylistsPage() {
 
           <div className="playlist-list">
             {data?.items.length ? (
-              data.items.map((playlist) => (
-                <article
-                  className={`playlist-card ${selectedPlaylistId === playlist.id ? "selected" : ""}`}
-                  key={playlist.id}
-                >
+              data.items.map((playlist) => {
+                const stats = videoStatsByPlaylist.get(playlist.id) ?? { total: 0, downloaded: 0, failed: 0 };
+                const downloadPercentage = stats.total > 0 ? Math.round((stats.downloaded / stats.total) * 100) : 0;
+
+                return (
+                  <article className={`playlist-card ${selectedPlaylistId === playlist.id ? "selected" : ""}`} key={playlist.id}>
                   <button
                     className="playlist-card-body"
                     type="button"
@@ -263,8 +334,18 @@ export function PlaylistsPage() {
                       </span>
                     </div>
                     <h2>{playlist.title}</h2>
-                    <p className="card-meta">{playlist.folder_path}</p>
-                    <p className="card-link">{playlist.source_url}</p>
+                    <div className="playlist-progress">
+                      <div className="playlist-progress-copy">
+                        <span className="status-label">Downloaded</span>
+                        <strong>{downloadPercentage}%</strong>
+                      </div>
+                      <div className="playlist-progress-bar" aria-hidden="true">
+                        <span style={{ width: `${downloadPercentage}%` }} />
+                      </div>
+                      <p className="card-meta">
+                        {stats.downloaded}/{stats.total} videos · Added {formatRelativeTime(playlist.created_at)}
+                      </p>
+                    </div>
                   </button>
                   <div className="card-actions card-actions-wrap">
                     <button
@@ -301,8 +382,9 @@ export function PlaylistsPage() {
                         : "Download new"}
                     </button>
                   </div>
-                </article>
-              ))
+                  </article>
+                );
+              })
             ) : (
               !isLoading && <p className="hint">No playlists saved yet.</p>
             )}
@@ -338,14 +420,32 @@ export function PlaylistsPage() {
           {selectedPlaylist ? (
             <>
               <div className="selected-summary detail-summary">
-                <div>
-                  <span className="status-label">Folder</span>
-                  <p className="card-meta">{selectedPlaylist.folder_path}</p>
-                </div>
-                <div>
-                  <span className="status-label">Source</span>
-                  <p className="card-link">{selectedPlaylist.source_url}</p>
-                </div>
+                <article className="selected-summary-row">
+                  <div>
+                    <span className="status-label">Folder</span>
+                    <p className="card-meta">{selectedPlaylist.folder_path}</p>
+                  </div>
+                  <button
+                    className="secondary-button summary-action-button"
+                    type="button"
+                    onClick={() => openFolderPath(selectedPlaylist.folder_path)}
+                  >
+                    Open in Finder
+                  </button>
+                </article>
+                <article className="selected-summary-row">
+                  <div>
+                    <span className="status-label">Source</span>
+                    <p className="card-link">{toPlaylistUrl(selectedPlaylist.source_url)}</p>
+                  </div>
+                  <button
+                    className="secondary-button summary-action-button"
+                    type="button"
+                    onClick={() => openExternalUrl(toPlaylistUrl(selectedPlaylist.source_url))}
+                  >
+                    Open playlist
+                  </button>
+                </article>
               </div>
 
               <div className="detail-actions">
@@ -440,12 +540,6 @@ export function PlaylistsPage() {
                       <span className="status-label">Failed</span>
                       <strong>{failedCount}</strong>
                     </article>
-                  </section>
-                  <section className="overview-note">
-                    <span className="status-label">Focus mode</span>
-                    <p className="hint">
-                      Overview keeps high-frequency actions visible. Video inventory and edit controls are moved into tabs so the page stays usable on smaller screens.
-                    </p>
                   </section>
                 </div>
               )}
@@ -567,7 +661,7 @@ export function PlaylistsPage() {
               )}
             </>
           ) : (
-            <p className="hint">Choose a playlist card to focus the right-hand detail panel.</p>
+            <div className="empty-detail-state">No playlist selected.</div>
           )}
         </section>
       </div>
@@ -615,7 +709,7 @@ export function PlaylistsPage() {
                 <label>
                   Folder name
                   <input
-                    placeholder="Optional, derived from playlist URL"
+                    placeholder="Optional, derived from playlist title"
                     value={form.folder_name}
                     onChange={(event) => updateField("folder_name", event.target.value)}
                   />

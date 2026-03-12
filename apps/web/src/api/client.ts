@@ -172,6 +172,10 @@ export async function fetchPlaylistVideos(playlistId: string): Promise<VideoList
   return request<VideoListResponse>(`/playlists/${playlistId}/videos`);
 }
 
+export async function fetchVideos(): Promise<VideoListResponse> {
+  return request<VideoListResponse>("/videos");
+}
+
 export async function downloadNewVideos(
   playlistId: string,
   batchSize: number,
