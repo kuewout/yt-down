@@ -31,9 +31,10 @@ type ActivityLogEntry = {
   key: string;
   title: string;
   detail: string | null;
-  counter: string | null;
   isActive: boolean;
   createdAt: string;
+  tone: "live" | "success" | "error" | "info";
+  command: string;
 };
 
 const initialFormState: FormState = {
@@ -41,7 +42,7 @@ const initialFormState: FormState = {
   title: "",
   folder_name: "",
   folder_path: "",
-  cookies_browser: "",
+  cookies_browser: "chrome",
   resolution_limit: "1440",
 };
 
@@ -117,28 +118,57 @@ function formatLogTime(timestamp: string): string {
 }
 
 function buildActivityTitle(activity: ActivityResponse): string {
+  const operation = activity.operation?.trim() || "Idle";
   if (activity.playlist_title) {
-    return `${activity.operation} · ${activity.playlist_title}`;
+    return `${operation} ${activity.playlist_title}`;
   }
 
-  return activity.operation ?? "Idle";
+  return operation;
 }
 
-function buildActivityCounter(activity: ActivityResponse): string | null {
-  if (activity.items_total !== null) {
-    return `${activity.items_completed}/${activity.items_total}`;
+function buildActivityTone(activity: ActivityResponse): ActivityLogEntry["tone"] {
+  const detail = `${activity.message ?? ""} ${activity.video_title ?? ""}`.toLowerCase();
+
+  if (detail.includes("failed") || detail.includes("error")) {
+    return "error";
   }
 
-  if (activity.items_completed > 0) {
-    return `${activity.items_completed}`;
+  if (
+    !activity.is_active &&
+    (detail.includes("saved") || detail.includes("finished") || detail.includes("complete") || detail.includes("ready"))
+  ) {
+    return "success";
   }
 
-  return null;
+  if (activity.is_active) {
+    return "live";
+  }
+
+  return "info";
 }
 
-function buildActivityDetail(activity: ActivityResponse): string | null {
-  const parts = [activity.message, activity.video_title].filter(Boolean);
-  return parts.length ? parts.join(" · ") : null;
+function buildActivityCommand(activity: ActivityResponse): string {
+  const operation = (activity.operation ?? "job").toLowerCase().replace(/\s+/g, "-");
+
+  if (activity.playlist_title) {
+    return `${operation} --playlist "${activity.playlist_title}"`;
+  }
+
+  return operation;
+}
+
+function buildActivityLine(activity: ActivityResponse): string {
+  const parts: string[] = [];
+
+  if (activity.message) {
+    parts.push(activity.message);
+  }
+
+  if (activity.video_title) {
+    parts.push(`video="${activity.video_title}"`);
+  }
+
+  return parts.join("  ") || "Waiting for updates";
 }
 
 export function PlaylistsPage() {
@@ -160,7 +190,7 @@ export function PlaylistsPage() {
   const [playlistFilter, setPlaylistFilter] = useState<PlaylistFilter>("active");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [downloadBatchSize, setDownloadBatchSize] = useState("5");
-  const [downloadBrowser, setDownloadBrowser] = useState("");
+  const [downloadBrowser, setDownloadBrowser] = useState("chrome");
   const selectedVideos = usePlaylistVideos(selectedPlaylistId);
   const selectedPlaylist = data?.items.find((playlist) => playlist.id === selectedPlaylistId) ?? null;
   const playlistCount = data?.items.length ?? 0;
@@ -177,10 +207,7 @@ export function PlaylistsPage() {
   const hasActivity = Boolean(activityData && activityData.operation);
   const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([]);
   const [isActivityExpanded, setIsActivityExpanded] = useState(false);
-  const browserOptions = [
-    { value: "", label: "No browser cookies" },
-    ...(cookieBrowsers.data?.options ?? []),
-  ];
+  const browserOptions = cookieBrowsers.data?.options ?? [];
   const supportedBrowserValues = browserOptions.map((option) => option.value);
   const supportedBrowserKey = supportedBrowserValues.join("|");
 
@@ -212,11 +239,11 @@ export function PlaylistsPage() {
   useEffect(() => {
     if (!selectedPlaylist) {
       setEditForm(initialFormState);
-      setDownloadBrowser("");
+      setDownloadBrowser("chrome");
       return;
     }
 
-    const nextBrowser = selectedPlaylist.cookies_browser ?? "";
+    const nextBrowser = selectedPlaylist.cookies_browser ?? "chrome";
     setEditForm({
       source_url: selectedPlaylist.source_url,
       title: selectedPlaylist.title,
@@ -235,12 +262,12 @@ export function PlaylistsPage() {
 
     const supportedValues = new Set(supportedBrowserValues);
     setForm((current) =>
-      supportedValues.has(current.cookies_browser) ? current : { ...current, cookies_browser: "" },
+      supportedValues.has(current.cookies_browser) ? current : { ...current, cookies_browser: "chrome" },
     );
     setEditForm((current) =>
-      supportedValues.has(current.cookies_browser) ? current : { ...current, cookies_browser: "" },
+      supportedValues.has(current.cookies_browser) ? current : { ...current, cookies_browser: "chrome" },
     );
-    setDownloadBrowser((current) => (supportedValues.has(current) ? current : ""));
+    setDownloadBrowser((current) => (supportedValues.has(current) ? current : "chrome"));
   }, [cookieBrowsers.isSuccess, supportedBrowserKey]);
 
   useEffect(() => {
@@ -260,10 +287,11 @@ export function PlaylistsPage() {
     const nextEntry: ActivityLogEntry = {
       key,
       title: buildActivityTitle(activityData),
-      detail: buildActivityDetail(activityData),
-      counter: buildActivityCounter(activityData),
+      detail: buildActivityLine(activityData),
       isActive: activityData.is_active,
       createdAt: activityData.updated_at ?? activityData.finished_at ?? activityData.started_at ?? new Date().toISOString(),
+      tone: buildActivityTone(activityData),
+      command: buildActivityCommand(activityData),
     };
 
     setActivityLog((current) => {
@@ -294,7 +322,7 @@ export function PlaylistsPage() {
       title: form.title.trim(),
       folder_name: form.folder_name.trim(),
       folder_path: form.folder_path.trim() || undefined,
-      cookies_browser: form.cookies_browser.trim() || null,
+      cookies_browser: form.cookies_browser.trim() || "chrome",
       resolution_limit: form.resolution_limit ? Number(form.resolution_limit) : null,
       active: true,
       playlist_id: null,
@@ -318,7 +346,7 @@ export function PlaylistsPage() {
         title: editForm.title.trim(),
         folder_name: editForm.folder_name.trim(),
         folder_path: editForm.folder_path.trim() || undefined,
-        cookies_browser: editForm.cookies_browser.trim() || null,
+        cookies_browser: editForm.cookies_browser.trim() || "chrome",
         resolution_limit: editForm.resolution_limit ? Number(editForm.resolution_limit) : null,
         active: selectedPlaylist?.active ?? true,
       },
@@ -357,34 +385,38 @@ export function PlaylistsPage() {
             className={`activity-overlay ${activityData.is_active ? "activity-overlay-live" : ""} ${
               isActivityExpanded ? "activity-overlay-expanded" : "activity-overlay-collapsed"
             }`}
-            role="button"
-            tabIndex={0}
-            onClick={() => setIsActivityExpanded((current) => !current)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                setIsActivityExpanded((current) => !current);
-              }
-            }}
-            aria-label={isActivityExpanded ? "Collapse activity log" : "Expand activity log"}
           >
             <div className="activity-overlay-header">
-              <div className="activity-overlay-heading">
-                <span className="status-label">Latest activity</span>
-                {activityData.is_active && <span className="activity-live-pill">Live</span>}
-              </div>
+              <button
+                className="activity-overlay-toggle"
+                type="button"
+                onClick={() => setIsActivityExpanded((current) => !current)}
+                aria-expanded={isActivityExpanded}
+                aria-label={isActivityExpanded ? "Collapse activity log" : "Expand activity log"}
+              >
+                <div className="activity-overlay-heading">
+                  <span className="status-label">Latest activity</span>
+                  {activityData.is_active && <span className="activity-live-pill">Live</span>}
+                </div>
+              </button>
             </div>
             {isActivityExpanded ? (
               <div className="activity-console">
                 {activityLog.length ? (
                   activityLog.map((entry) => (
-                    <article key={entry.key} className={`activity-log-entry ${entry.isActive ? "is-live" : ""}`}>
+                    <article
+                      key={entry.key}
+                      className={`activity-log-entry activity-log-entry-${entry.tone} ${entry.isActive ? "is-live" : ""}`}
+                    >
                       <span className="activity-log-time">{formatLogTime(entry.createdAt)}</span>
+                      <span className="activity-log-prompt" aria-hidden="true">
+                        {entry.tone === "error" ? "!" : entry.tone === "success" ? "#" : "$"}
+                      </span>
                       <div className="activity-log-copy">
-                        <strong>{entry.title}</strong>
-                        {entry.detail && <p className="hint status-copy">{entry.detail}</p>}
+                        <strong>{entry.command}</strong>
+                        <p className="activity-log-summary">{entry.title}</p>
+                        {entry.detail && <p className="activity-log-detail">{entry.detail}</p>}
                       </div>
-                      {entry.counter && <span className="activity-log-counter">{entry.counter}</span>}
                     </article>
                   ))
                 ) : (
@@ -563,8 +595,8 @@ export function PlaylistsPage() {
                             batchSize: Number(downloadBatchSize),
                             cookiesBrowser:
                               selectedPlaylistId === playlist.id
-                                ? downloadBrowser || null
-                                : playlist.cookies_browser || null,
+                                ? downloadBrowser || "chrome"
+                                : playlist.cookies_browser || "chrome",
                           });
                         }}
                       >
@@ -606,8 +638,7 @@ export function PlaylistsPage() {
           )}
           {downloadNewVideos.data && (
             <p className="hint">
-              Attempted {downloadNewVideos.data.attempted_videos}: downloaded {downloadNewVideos.data.downloaded_videos},
-              failed {downloadNewVideos.data.failed_videos}.
+              Downloaded {downloadNewVideos.data.downloaded_videos}, failed {downloadNewVideos.data.failed_videos}.
             </p>
           )}
         </section>
@@ -672,7 +703,7 @@ export function PlaylistsPage() {
                       downloadNewVideos.mutate({
                         playlistId: selectedPlaylist.id,
                         batchSize: Number(downloadBatchSize),
-                        cookiesBrowser: downloadBrowser || null,
+                        cookiesBrowser: downloadBrowser || "chrome",
                       })
                     }
                   >

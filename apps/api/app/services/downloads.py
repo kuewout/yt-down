@@ -37,6 +37,8 @@ def download_missing_videos(
     output_dir.mkdir(parents=True, exist_ok=True)
     output_template = str(output_dir / "%(upload_date)s %(title)s.%(ext)s")
     requested_browser = cookies_browser if cookies_browser is not None else playlist.cookies_browser
+    if not requested_browser:
+        requested_browser = "chrome"
     resolved_browser = normalize_cookies_browser(requested_browser)
     browser_label = resolved_browser or "none"
 
@@ -73,14 +75,14 @@ def download_missing_videos(
                 activity_registry.update(
                     video_id=current_video_id,
                     video_title=current_video_title,
-                    message=f"Video {current_index}/{attempted_count} via {browser_label}: {progress}",
+                    message=f"{browser_label} {progress}",
                     items_completed=current_index - 1,
                 )
 
             activity_registry.update(
                 video_id=video.id,
                 video_title=video.title,
-                message=f"Starting video {index}/{attempted_count} with browser: {browser_label}",
+                message=f"Starting via {browser_label}",
                 items_completed=index - 1,
             )
             logger.info(
@@ -110,6 +112,8 @@ def download_missing_videos(
                     exc,
                 )
                 activity_registry.update(
+                    video_id=video.id,
+                    video_title=video.title,
                     message=f"Failed video {index}/{attempted_count} via {browser_label}",
                     items_completed=index,
                 )
@@ -128,7 +132,9 @@ def download_missing_videos(
                 result.local_path,
             )
             activity_registry.update(
-                message=f"Downloaded video {index}/{attempted_count} via {browser_label}",
+                video_id=video.id,
+                video_title=video.title,
+                message=f"Saved via {browser_label}",
                 items_completed=index,
             )
 
@@ -140,10 +146,7 @@ def download_missing_videos(
         raise
 
     activity_registry.complete(
-        message=(
-            f"Attempted {attempted_count} downloads with browser: {browser_label}. "
-            f"{downloaded_count} succeeded, {failed_count} failed"
-        ),
+        message=f"Finished via {browser_label}: saved {downloaded_count}, failed {failed_count}",
         items_completed=attempted_count,
     )
     return playlist, downloaded_count, failed_count, attempted_count

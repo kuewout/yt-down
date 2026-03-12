@@ -422,7 +422,6 @@ a {
     0 24px 48px rgba(29, 24, 19, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(20px);
-  cursor: pointer;
   transition:
     transform 140ms ease,
     box-shadow 140ms ease,
@@ -431,11 +430,6 @@ a {
 
 .activity-overlay:hover {
   transform: translateY(-1px);
-}
-
-.activity-overlay:focus-visible {
-  outline: 2px solid rgba(15, 118, 110, 0.38);
-  outline-offset: 2px;
 }
 
 .activity-overlay-collapsed {
@@ -474,6 +468,24 @@ a {
   gap: 12px;
 }
 
+.activity-overlay-toggle {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.activity-overlay-toggle:focus-visible {
+  outline: 2px solid rgba(15, 118, 110, 0.38);
+  outline-offset: 4px;
+  border-radius: 14px;
+}
+
 .activity-overlay-heading {
   display: inline-flex;
   align-items: center;
@@ -498,6 +510,13 @@ a {
   gap: 8px;
   max-height: 360px;
   overflow: auto;
+  padding: 6px;
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(17, 24, 39, 0.96), rgba(24, 24, 27, 0.96));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 0 0 1px rgba(148, 163, 184, 0.12);
 }
 
 .activity-collapsed-indicator {
@@ -522,26 +541,32 @@ a {
 
 .activity-log-entry {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 12px;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: 10px;
   align-items: start;
-  padding: 10px 12px;
-  border-radius: 16px;
-  background: rgba(33, 27, 22, 0.045);
-  border: 1px solid rgba(53, 44, 34, 0.05);
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.66);
+  border: 1px solid rgba(71, 85, 105, 0.28);
+  font-family: "SFMono-Regular", "SF Mono", "Menlo", "Consolas", monospace;
 }
 
 .activity-log-entry.is-live {
-  background: rgba(15, 118, 110, 0.08);
-  border-color: rgba(15, 118, 110, 0.14);
+  border-color: rgba(45, 212, 191, 0.4);
 }
 
-.activity-log-time,
-.activity-log-counter {
-  color: var(--muted);
-  font-size: 0.78rem;
-  line-height: 1.6;
+.activity-log-time {
+  color: #94a3b8;
+  font-size: 0.72rem;
+  line-height: 1.5;
   white-space: nowrap;
+}
+
+.activity-log-prompt {
+  color: #2dd4bf;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  font-weight: 700;
 }
 
 .activity-log-copy {
@@ -550,12 +575,63 @@ a {
 
 .activity-log-copy strong {
   display: block;
-  font-size: 0.93rem;
+  color: #e2e8f0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.activity-log-summary,
+.activity-log-detail {
+  margin: 2px 0 0;
+  word-break: break-word;
+}
+
+.activity-log-summary {
+  color: #f8fafc;
+  font-size: 0.82rem;
   line-height: 1.4;
 }
 
-.activity-log-copy p {
-  margin-top: 4px;
+.activity-log-detail {
+  color: #94a3b8;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.activity-log-entry-live .activity-log-summary {
+  color: #99f6e4;
+}
+
+.activity-log-entry-success .activity-log-prompt {
+  color: #86efac;
+}
+
+.activity-log-entry-success .activity-log-summary {
+  color: #dcfce7;
+}
+
+.activity-log-entry-success {
+  border-color: rgba(34, 197, 94, 0.28);
+  background: rgba(20, 83, 45, 0.26);
+}
+
+.activity-log-entry-error .activity-log-prompt {
+  color: #fda4af;
+}
+
+.activity-log-entry-error .activity-log-summary {
+  color: #ffe4e6;
+}
+
+.activity-log-entry-error {
+  border-color: rgba(244, 63, 94, 0.32);
+  background: rgba(76, 5, 25, 0.34);
+}
+
+.activity-log-entry-info .activity-log-prompt {
+  color: #60a5fa;
 }
 
 .summary-strip {

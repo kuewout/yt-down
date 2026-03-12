@@ -18,8 +18,9 @@ def build_folder_path(folder_name: str) -> str:
 
 
 def slugify_folder_name(value: str) -> str:
-    slug = re.sub(r"[^A-Za-z0-9_-]+", "-", value).strip("-_").lower()
-    return slug or "playlist"
+    normalized = re.sub(r'[\x00-\x1f<>:"/\\|?*]+', "-", value)
+    normalized = re.sub(r"\s+", " ", normalized).strip(" .")
+    return normalized or "playlist"
 
 
 def resolve_unique_folder_name(
