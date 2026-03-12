@@ -38,35 +38,11 @@ def rescan_library(db: Session) -> LibraryRescanResult:
                 message=f"Scanning {playlist.title}",
                 items_completed=index - 1,
             )
-            playlist_files = _collect_playlist_files(Path(playlist.folder_path))
-            files_scanned += len(playlist_files)
-            files_by_normalized_stem = _build_normalized_index(playlist_files)
-            videos = db.scalars(select(Video).where(Video.playlist_id == playlist.id)).all()
-
-            for video in videos:
-                current_path = Path(video.local_path) if video.local_path else None
-                if current_path and current_path.is_file():
-                    resolved_path = str(current_path.resolve())
-                    if video.local_path != resolved_path:
-                        video.local_path = resolved_path
-                    video.downloaded = True
-                    video.download_error = None
-                    unchanged_videos += 1
-                    continue
-
-                if video.local_path:
-                    video.local_path = None
-
-                matched_path = _match_video_file(video, files_by_normalized_stem)
-                if matched_path is None:
-                    video.downloaded = False
-                    missing_videos += 1
-                    continue
-
-                video.local_path = str(matched_path.resolve())
-                video.downloaded = True
-                video.download_error = None
-                relinked_videos += 1
+            result = relink_playlist_videos(db, playlist)
+            files_scanned += result.files_scanned
+            relinked_videos += result.relinked_videos
+            missing_videos += result.missing_videos
+            unchanged_videos += result.unchanged_videos
 
             activity_registry.update(items_completed=index)
 
@@ -82,6 +58,48 @@ def rescan_library(db: Session) -> LibraryRescanResult:
     return LibraryRescanResult(
         playlists_scanned=len(playlists),
         files_scanned=files_scanned,
+        relinked_videos=relinked_videos,
+        missing_videos=missing_videos,
+        unchanged_videos=unchanged_videos,
+    )
+
+
+def relink_playlist_videos(db: Session, playlist: Playlist) -> LibraryRescanResult:
+    playlist_files = _collect_playlist_files(Path(playlist.folder_path))
+    files_by_normalized_stem = _build_normalized_index(playlist_files)
+    videos = db.scalars(select(Video).where(Video.playlist_id == playlist.id)).all()
+    relinked_videos = 0
+    missing_videos = 0
+    unchanged_videos = 0
+
+    for video in videos:
+        current_path = Path(video.local_path) if video.local_path else None
+        if current_path and current_path.is_file():
+            resolved_path = str(current_path.resolve())
+            if video.local_path != resolved_path:
+                video.local_path = resolved_path
+            video.downloaded = True
+            video.download_error = None
+            unchanged_videos += 1
+            continue
+
+        if video.local_path:
+            video.local_path = None
+
+        matched_path = _match_video_file(video, files_by_normalized_stem)
+        if matched_path is None:
+            video.downloaded = False
+            missing_videos += 1
+            continue
+
+        video.local_path = str(matched_path.resolve())
+        video.downloaded = True
+        video.download_error = None
+        relinked_videos += 1
+
+    return LibraryRescanResult(
+        playlists_scanned=1,
+        files_scanned=len(playlist_files),
         relinked_videos=relinked_videos,
         missing_videos=missing_videos,
         unchanged_videos=unchanged_videos,

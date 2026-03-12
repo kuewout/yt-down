@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     )
     media_root: str = "./assets"
     log_level: str = "INFO"
-    default_cookies_browser: str | None = None
+    default_cookies_browser: str | None = "firefox"
     allowed_origins: list[str] = ["http://localhost:5173"]
 
     @field_validator("database_url", mode="before")

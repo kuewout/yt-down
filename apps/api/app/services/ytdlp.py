@@ -169,7 +169,15 @@ def _parse_upload_date(value: str | None) -> datetime | None:
 
 
 def fetch_flat_playlist(url: str) -> PlaylistSnapshot:
-    cmd = ["yt-dlp", "--flat-playlist", "-J", url]
+    cmd = [
+        "yt-dlp",
+        "--compat-options",
+        "no-youtube-unavailable-videos",
+        "--extractor-args",
+        "youtube:lang=zh-CN",
+        "-J",
+        url,
+    ]
     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if result.returncode != 0:
         raise YtDlpError(result.stderr.strip() or "yt-dlp failed to fetch playlist metadata")

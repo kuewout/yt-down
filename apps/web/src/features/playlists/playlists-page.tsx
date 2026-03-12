@@ -42,8 +42,8 @@ const initialFormState: FormState = {
   title: "",
   folder_name: "",
   folder_path: "",
-  cookies_browser: "chrome",
-  resolution_limit: "1440",
+  cookies_browser: "firefox",
+  resolution_limit: "720",
 };
 
 const batchSizeOptions = [1, 5, 10, 25, 50];
@@ -171,6 +171,14 @@ function buildActivityLine(activity: ActivityResponse): string {
   return parts.join("  ") || "Waiting for updates";
 }
 
+function defaultBrowserValue(options: Array<{ value: string }>): string {
+  if (options.some((option) => option.value === "firefox")) {
+    return "firefox";
+  }
+
+  return options[0]?.value ?? "firefox";
+}
+
 export function PlaylistsPage() {
   const { data, isLoading, isError, error } = usePlaylists();
   const cookieBrowsers = useCookieBrowsers();
@@ -190,7 +198,7 @@ export function PlaylistsPage() {
   const [playlistFilter, setPlaylistFilter] = useState<PlaylistFilter>("active");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [downloadBatchSize, setDownloadBatchSize] = useState("5");
-  const [downloadBrowser, setDownloadBrowser] = useState("chrome");
+  const [downloadBrowser, setDownloadBrowser] = useState("firefox");
   const selectedVideos = usePlaylistVideos(selectedPlaylistId);
   const selectedPlaylist = data?.items.find((playlist) => playlist.id === selectedPlaylistId) ?? null;
   const playlistCount = data?.items.length ?? 0;
@@ -208,6 +216,7 @@ export function PlaylistsPage() {
   const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([]);
   const [isActivityExpanded, setIsActivityExpanded] = useState(false);
   const browserOptions = cookieBrowsers.data?.options ?? [];
+  const preferredBrowser = defaultBrowserValue(browserOptions);
   const supportedBrowserValues = browserOptions.map((option) => option.value);
   const supportedBrowserKey = supportedBrowserValues.join("|");
 
@@ -239,11 +248,11 @@ export function PlaylistsPage() {
   useEffect(() => {
     if (!selectedPlaylist) {
       setEditForm(initialFormState);
-      setDownloadBrowser("chrome");
+      setDownloadBrowser(preferredBrowser);
       return;
     }
 
-    const nextBrowser = selectedPlaylist.cookies_browser ?? "chrome";
+    const nextBrowser = selectedPlaylist.cookies_browser ?? preferredBrowser;
     setEditForm({
       source_url: selectedPlaylist.source_url,
       title: selectedPlaylist.title,
@@ -253,7 +262,7 @@ export function PlaylistsPage() {
       resolution_limit: selectedPlaylist.resolution_limit?.toString() ?? "",
     });
     setDownloadBrowser(nextBrowser);
-  }, [selectedPlaylist]);
+  }, [preferredBrowser, selectedPlaylist]);
 
   useEffect(() => {
     if (!cookieBrowsers.isSuccess) {
@@ -262,13 +271,13 @@ export function PlaylistsPage() {
 
     const supportedValues = new Set(supportedBrowserValues);
     setForm((current) =>
-      supportedValues.has(current.cookies_browser) ? current : { ...current, cookies_browser: "chrome" },
+      supportedValues.has(current.cookies_browser) ? current : { ...current, cookies_browser: preferredBrowser },
     );
     setEditForm((current) =>
-      supportedValues.has(current.cookies_browser) ? current : { ...current, cookies_browser: "chrome" },
+      supportedValues.has(current.cookies_browser) ? current : { ...current, cookies_browser: preferredBrowser },
     );
-    setDownloadBrowser((current) => (supportedValues.has(current) ? current : "chrome"));
-  }, [cookieBrowsers.isSuccess, supportedBrowserKey]);
+    setDownloadBrowser((current) => (supportedValues.has(current) ? current : preferredBrowser));
+  }, [cookieBrowsers.isSuccess, preferredBrowser, supportedBrowserKey]);
 
   useEffect(() => {
     if (!activityData || !activityData.operation) {
@@ -322,7 +331,7 @@ export function PlaylistsPage() {
       title: form.title.trim(),
       folder_name: form.folder_name.trim(),
       folder_path: form.folder_path.trim() || undefined,
-      cookies_browser: form.cookies_browser.trim() || "chrome",
+      cookies_browser: form.cookies_browser.trim() || preferredBrowser,
       resolution_limit: form.resolution_limit ? Number(form.resolution_limit) : null,
       active: true,
       playlist_id: null,
@@ -346,7 +355,7 @@ export function PlaylistsPage() {
         title: editForm.title.trim(),
         folder_name: editForm.folder_name.trim(),
         folder_path: editForm.folder_path.trim() || undefined,
-        cookies_browser: editForm.cookies_browser.trim() || "chrome",
+        cookies_browser: editForm.cookies_browser.trim() || preferredBrowser,
         resolution_limit: editForm.resolution_limit ? Number(editForm.resolution_limit) : null,
         active: selectedPlaylist?.active ?? true,
       },
@@ -595,8 +604,8 @@ export function PlaylistsPage() {
                             batchSize: Number(downloadBatchSize),
                             cookiesBrowser:
                               selectedPlaylistId === playlist.id
-                                ? downloadBrowser || "chrome"
-                                : playlist.cookies_browser || "chrome",
+                                ? downloadBrowser || preferredBrowser
+                                : playlist.cookies_browser || preferredBrowser,
                           });
                         }}
                       >
@@ -703,7 +712,7 @@ export function PlaylistsPage() {
                       downloadNewVideos.mutate({
                         playlistId: selectedPlaylist.id,
                         batchSize: Number(downloadBatchSize),
-                        cookiesBrowser: downloadBrowser || "chrome",
+                        cookiesBrowser: downloadBrowser || preferredBrowser,
                       })
                     }
                   >

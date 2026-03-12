@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Playlist, Video
+from app.core.config import settings
 from app.services.activity import activity_registry
 from app.services.ytdlp import YtDlpError, download_video, normalize_cookies_browser
 
@@ -38,7 +39,7 @@ def download_missing_videos(
     output_template = str(output_dir / "%(upload_date)s %(title)s.%(ext)s")
     requested_browser = cookies_browser if cookies_browser is not None else playlist.cookies_browser
     if not requested_browser:
-        requested_browser = "chrome"
+        requested_browser = settings.default_cookies_browser
     resolved_browser = normalize_cookies_browser(requested_browser)
     browser_label = resolved_browser or "none"
 
