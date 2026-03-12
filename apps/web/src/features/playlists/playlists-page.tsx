@@ -179,6 +179,40 @@ function defaultBrowserValue(options: Array<{ value: string }>): string {
   return options[0]?.value ?? "firefox";
 }
 
+function isUndownloadableError(message: string | null): boolean {
+  return Boolean(message?.startsWith("UNDOWNLOADABLE: "));
+}
+
+function getVideoStatusRank(video: {
+  downloaded: boolean;
+  download_error: string | null;
+}): number {
+  if (video.downloaded) {
+    return 0;
+  }
+
+  if (isUndownloadableError(video.download_error)) {
+    return 1;
+  }
+
+  return 2;
+}
+
+function getVideoStatusLabel(video: {
+  downloaded: boolean;
+  download_error: string | null;
+}): string {
+  if (video.downloaded) {
+    return "Downloaded";
+  }
+
+  if (isUndownloadableError(video.download_error)) {
+    return "Undownloadable";
+  }
+
+  return "Missing";
+}
+
 export function PlaylistsPage() {
   const { data, isLoading, isError, error } = usePlaylists();
   const cookieBrowsers = useCookieBrowsers();
@@ -219,6 +253,23 @@ export function PlaylistsPage() {
   const preferredBrowser = defaultBrowserValue(browserOptions);
   const supportedBrowserValues = browserOptions.map((option) => option.value);
   const supportedBrowserKey = supportedBrowserValues.join("|");
+  const sortedSelectedVideos =
+    selectedVideos.data?.items
+      .slice()
+      .sort((left, right) => {
+        const statusDifference = getVideoStatusRank(left) - getVideoStatusRank(right);
+        if (statusDifference !== 0) {
+          return statusDifference;
+        }
+
+        const leftDate = left.upload_date ?? "";
+        const rightDate = right.upload_date ?? "";
+        if (leftDate !== rightDate) {
+          return rightDate.localeCompare(leftDate);
+        }
+
+        return left.title.localeCompare(right.title);
+      }) ?? [];
 
   videos.data?.items.forEach((video) => {
     const current = videoStatsByPlaylist.get(video.playlist_id) ?? { total: 0, downloaded: 0, failed: 0 };
@@ -807,8 +858,8 @@ export function PlaylistsPage() {
                     </p>
                   )}
                   <div className="video-list">
-                    {selectedVideos.data?.items.length ? (
-                      selectedVideos.data.items.map((video) => (
+                    {sortedSelectedVideos.length ? (
+                      sortedSelectedVideos.map((video) => (
                         <article className="video-row" key={video.id}>
                           <div className="video-row-main">
                             <strong>{video.title}</strong>
@@ -819,10 +870,14 @@ export function PlaylistsPage() {
                           </div>
                           <span
                             className={`pill video-status ${
-                              video.downloaded ? "downloaded-pill" : video.download_error ? "failed-pill" : ""
+                              video.downloaded
+                                ? "downloaded-pill"
+                                : isUndownloadableError(video.download_error)
+                                  ? "failed-pill"
+                                  : ""
                             }`}
                           >
-                            {video.downloaded ? "Downloaded" : video.download_error ? "Failed" : "Missing"}
+                            {getVideoStatusLabel(video)}
                           </span>
                         </article>
                       ))
