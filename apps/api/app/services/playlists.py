@@ -2,7 +2,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 import re
 import shutil
-from urllib.parse import parse_qs, urlparse
 from uuid import UUID
 
 from sqlalchemy import select
@@ -23,45 +22,83 @@ def slugify_folder_name(value: str) -> str:
     return slug or "playlist"
 
 
-def derive_folder_name(source_url: str) -> str:
-    parsed = urlparse(source_url)
-    query = parse_qs(parsed.query)
-    candidate = query.get("list", [None])[0]
-    if not candidate:
-        path_parts = [part for part in parsed.path.split("/") if part]
-        candidate = path_parts[-1] if path_parts else parsed.netloc or "playlist"
+def resolve_unique_folder_name(
+    db: Session, preferred_name: str, exclude_playlist_id: UUID | None = None, current_path: str | None = None
+) -> str:
+    base_name = slugify_folder_name(preferred_name)
+    suffix = 1
 
-    return slugify_folder_name(candidate)
+    while True:
+        candidate = base_name if suffix == 1 else f"{base_name}-{suffix}"
+        candidate_path = build_folder_path(candidate)
+
+        folder_name_query = select(Playlist).where(Playlist.folder_name == candidate)
+        folder_path_query = select(Playlist).where(Playlist.folder_path == candidate_path)
+        if exclude_playlist_id:
+            folder_name_query = folder_name_query.where(Playlist.id != exclude_playlist_id)
+            folder_path_query = folder_path_query.where(Playlist.id != exclude_playlist_id)
+
+        existing_playlist = db.scalar(folder_name_query)
+        path_conflict = db.scalar(folder_path_query)
+        filesystem_conflict = Path(candidate_path).exists() and candidate_path != current_path
+
+        if not existing_playlist and not path_conflict and not filesystem_conflict:
+            return candidate
+
+        suffix += 1
 
 
-def maybe_apply_human_readable_folder(playlist: Playlist, snapshot: PlaylistSnapshot) -> None:
-    current_folder = playlist.folder_name.strip()
-    derived_from_url = derive_folder_name(playlist.source_url)
-    if current_folder and current_folder != derived_from_url:
+def folder_assignment_conflicts(
+    db: Session, folder_name: str, folder_path: str, exclude_playlist_id: UUID | None = None
+) -> bool:
+    folder_name_query = select(Playlist).where(Playlist.folder_name == folder_name)
+    folder_path_query = select(Playlist).where(Playlist.folder_path == folder_path)
+    if exclude_playlist_id:
+        folder_name_query = folder_name_query.where(Playlist.id != exclude_playlist_id)
+        folder_path_query = folder_path_query.where(Playlist.id != exclude_playlist_id)
+
+    return bool(db.scalar(folder_name_query) or db.scalar(folder_path_query))
+
+
+def prepare_new_playlist_folder(
+    db: Session, title: str | None, folder_name: str | None, folder_path: str | None
+) -> tuple[str, str, bool]:
+    if folder_name or folder_path:
+        resolved_folder_name = slugify_folder_name(folder_name or Path(folder_path or "").name or "playlist")
+        resolved_folder_path = folder_path or build_folder_path(resolved_folder_name)
+        if folder_assignment_conflicts(db, resolved_folder_name, resolved_folder_path):
+            raise ValueError("Folder name or path is already in use by another playlist")
+        return resolved_folder_name, resolved_folder_path, False
+
+    preferred_name = title or "playlist"
+    resolved_folder_name = resolve_unique_folder_name(db, preferred_name)
+    return resolved_folder_name, build_folder_path(resolved_folder_name), True
+
+
+def apply_title_folder_name(db: Session, playlist: Playlist, title: str) -> None:
+    if not playlist.use_title_as_folder:
         return
 
-    readable_folder = slugify_folder_name(snapshot.title)
-    if not readable_folder or readable_folder == current_folder:
+    target_folder_name = resolve_unique_folder_name(
+        db,
+        title,
+        exclude_playlist_id=playlist.id,
+        current_path=playlist.folder_path,
+    )
+    target_folder_path = build_folder_path(target_folder_name)
+    if playlist.folder_name == target_folder_name and playlist.folder_path == target_folder_path:
         return
 
     old_path = Path(playlist.folder_path)
-    new_path = Path(build_folder_path(readable_folder))
-    if new_path == old_path:
-        playlist.folder_name = readable_folder
-        playlist.folder_path = str(new_path)
-        return
-
-    if new_path.exists():
-        return
-
-    if old_path.exists():
+    new_path = Path(target_folder_path)
+    if old_path.exists() and old_path != new_path:
         try:
             shutil.move(str(old_path), str(new_path))
         except OSError:
             return
 
-    playlist.folder_name = readable_folder
-    playlist.folder_path = str(new_path)
+    playlist.folder_name = target_folder_name
+    playlist.folder_path = target_folder_path
 
 
 def sync_playlist(db: Session, playlist_id: UUID) -> tuple[Playlist, int]:
@@ -82,7 +119,7 @@ def sync_playlist(db: Session, playlist_id: UUID) -> tuple[Playlist, int]:
             message=f"Processing {len(snapshot.entries)} playlist entries",
             items_total=len(snapshot.entries),
         )
-        maybe_apply_human_readable_folder(playlist, snapshot)
+        apply_title_folder_name(db, playlist, snapshot.title)
         playlist.title = snapshot.title
         playlist.playlist_id = snapshot.playlist_id
         playlist.last_checked_at = datetime.now(UTC)
@@ -151,10 +188,12 @@ def list_playlist_videos(db: Session, playlist_id: UUID) -> list[Video]:
 
 __all__ = [
     "YtDlpError",
+    "apply_title_folder_name",
     "build_folder_path",
-    "derive_folder_name",
+    "folder_assignment_conflicts",
     "list_playlist_videos",
-    "maybe_apply_human_readable_folder",
+    "prepare_new_playlist_folder",
+    "resolve_unique_folder_name",
     "slugify_folder_name",
     "sync_playlist",
 ]

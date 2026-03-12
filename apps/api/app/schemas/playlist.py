@@ -33,6 +33,7 @@ class PlaylistRead(PlaylistBase):
 
     id: UUID
     playlist_id: str | None
+    use_title_as_folder: bool
     last_checked_at: datetime | None
     last_downloaded_at: datetime | None
     created_at: datetime

@@ -17,6 +17,9 @@ class Playlist(Base):
     title: Mapped[str] = mapped_column(Text, nullable=False)
     folder_name: Mapped[str] = mapped_column(String(255), nullable=False)
     folder_path: Mapped[str] = mapped_column(Text, nullable=False)
+    use_title_as_folder: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
     cookies_browser: Mapped[str | None] = mapped_column(String(64), nullable=True)
     resolution_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")

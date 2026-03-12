@@ -27,6 +27,7 @@ export type Playlist = {
   title: string;
   folder_name: string;
   folder_path: string;
+  use_title_as_folder: boolean;
   cookies_browser: string | null;
   resolution_limit: number | null;
   active: boolean;

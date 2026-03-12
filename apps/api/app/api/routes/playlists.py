@@ -12,8 +12,10 @@ from app.services.downloads import download_missing_videos
 from app.services.playlists import (
     YtDlpError,
     build_folder_path,
-    derive_folder_name,
+    folder_assignment_conflicts,
     list_playlist_videos,
+    prepare_new_playlist_folder,
+    slugify_folder_name,
     sync_playlist,
 )
 from app.schemas.video import VideoListResponse, VideoRead
@@ -36,12 +38,20 @@ def list_playlists(db: Session = Depends(get_db)) -> PlaylistListResponse:
 @router.post("", response_model=PlaylistRead, status_code=status.HTTP_201_CREATED)
 def create_playlist(payload: PlaylistCreate, db: Session = Depends(get_db)) -> PlaylistRead:
     data = payload.model_dump()
-    if not data["folder_name"]:
-        data["folder_name"] = derive_folder_name(data["source_url"])
-    if not data["folder_path"]:
-        data["folder_path"] = build_folder_path(data["folder_name"])
+    try:
+        folder_name, folder_path, use_title_as_folder = prepare_new_playlist_folder(
+            db,
+            title=data["title"] or None,
+            folder_name=data["folder_name"] or None,
+            folder_path=data["folder_path"] or None,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    data["folder_name"] = folder_name
+    data["folder_path"] = folder_path
+    data["use_title_as_folder"] = use_title_as_folder
     if not data["title"]:
-        data["title"] = data["folder_name"]
+        data["title"] = "Pending sync"
 
     playlist = Playlist(**data)
     db.add(playlist)
@@ -72,7 +82,27 @@ def update_playlist(
     if playlist is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Playlist not found")
 
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    update_data = payload.model_dump(exclude_unset=True)
+    if "folder_name" in update_data or "folder_path" in update_data:
+        resolved_folder_name = slugify_folder_name(
+            update_data.get("folder_name", playlist.folder_name) or playlist.folder_name
+        )
+        resolved_folder_path = update_data.get("folder_path") or build_folder_path(resolved_folder_name)
+        if folder_assignment_conflicts(
+            db,
+            resolved_folder_name,
+            resolved_folder_path,
+            exclude_playlist_id=playlist.id,
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Folder name or path is already in use by another playlist",
+            )
+        playlist.use_title_as_folder = False
+        update_data["folder_name"] = resolved_folder_name
+        update_data["folder_path"] = resolved_folder_path
+
+    for field, value in update_data.items():
         setattr(playlist, field, value)
 
     try:

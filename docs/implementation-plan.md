@@ -17,12 +17,16 @@ Last updated: 2026-03-12
 - SQLAlchemy models for `playlists` and `videos` are implemented.
 - Alembic configuration and the initial migration are implemented.
 - Initial migration has been applied to the Postgres database.
+- Follow-up migration for playlist folder auto-management has been applied to the Postgres database.
 - Playlist CRUD API is implemented:
   - `GET /api/playlists`
   - `POST /api/playlists`
   - `GET /api/playlists/{id}`
   - `PATCH /api/playlists/{id}`
   - `DELETE /api/playlists/{id}`
+  - auto-managed playlist folders now track a readable title-based slug instead of relying on legacy URL-derived placeholder rename heuristics
+  - automatic suffixing avoids folder collisions when multiple playlists resolve to the same title slug
+  - manual folder edits now fail fast if the folder name or folder path is already in use by another playlist
 - Health endpoint is implemented:
   - `GET /api/health`
 - Video listing endpoints are implemented:
@@ -59,12 +63,14 @@ Last updated: 2026-03-12
   - edit playlist settings
   - remove a playlist from tracking
   - trigger library rescan and view the latest summary
+- The app shell now has:
+  - a redesigned collapsible left rail for desktop
+  - a dedicated mobile top bar and navigation sheet instead of collapsing the desktop rail into a cramped mobile header
 - Playlist creation is simplified:
   - URL-first flow
   - optional title/folder input
   - derived folder name and path defaults
   - no default browser-cookie setting for newly added playlists
-- Playlist syncing now upgrades URL-derived folder names to a human-readable title-based folder when the rename is safe.
 - The main app shell now has a collapsible left navigation rail with a compact logo-only state.
 
 ### Implemented But Not Fully Verified End-to-End
@@ -134,6 +140,7 @@ Still needed:
 - manual verification that playlists containing duplicate video IDs now sync cleanly
 - manual verification that automatic folder renaming behaves correctly when a synced playlist already has files on disk
 - manual verification that Atlas browser and Comet browser selections behave acceptably through the current Chrome-compatible cookie fallback path
+- browser-level verification of the redesigned desktop rail and mobile navigation sheet is still needed
 
 ### Planned Commit Checkpoints
 
