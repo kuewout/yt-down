@@ -184,13 +184,17 @@ export function App() {
 
         <div className="sidebar-spacer" />
 
-        <div className="sidebar-footer">
-          {!isSidebarCollapsed && (
-            <>
+        {!isSidebarCollapsed && (
+          <div className="sidebar-meta">
             <span className="status-label">Library mode</span>
             <strong>Local-first download control</strong>
             <p className="hint">Playlists, sync status, and downloads stay one click away.</p>
-            </>
+          </div>
+        )}
+
+        <div className="sidebar-bottom">
+          {!isSidebarCollapsed && (
+            <span className="status-label">Collapse rail</span>
           )}
           <button
             className="sidebar-toggle"

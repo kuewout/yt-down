@@ -51,11 +51,15 @@ a {
   align-content: start;
   gap: 14px;
   padding: 20px 16px;
+  min-height: 100vh;
+  height: 100vh;
   border-right: 1px solid rgba(53, 44, 34, 0.08);
   background:
     linear-gradient(180deg, rgba(251, 247, 239, 0.98), rgba(255, 252, 246, 0.9)),
     rgba(255, 248, 240, 0.76);
   backdrop-filter: blur(22px);
+  position: sticky;
+  top: 0;
 }
 
 .sidebar-spacer {
@@ -248,7 +252,7 @@ a {
   padding: 36px;
 }
 
-.sidebar-footer {
+.sidebar-meta {
   display: grid;
   gap: 6px;
   padding: 16px;
@@ -256,10 +260,18 @@ a {
   border-radius: 22px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(248, 243, 234, 0.84));
-  margin-top: auto;
 }
 
-.sidebar-footer p {
+.sidebar-bottom {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid rgba(53, 44, 34, 0.08);
+}
+
+.sidebar-meta p {
   margin: 0;
 }
 
@@ -309,12 +321,8 @@ a {
   height: 50px;
 }
 
-.app-shell.sidebar-collapsed .sidebar-footer {
-  justify-items: center;
-  padding: 10px 8px;
-}
-
-.app-shell.sidebar-collapsed .sidebar-footer > :not(.sidebar-toggle) {
+.app-shell.sidebar-collapsed .sidebar-meta,
+.app-shell.sidebar-collapsed .sidebar-bottom > :not(.sidebar-toggle) {
   display: none;
 }
 
