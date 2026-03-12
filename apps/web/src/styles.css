@@ -51,6 +51,7 @@ a {
 .sidebar {
   display: grid;
   align-content: start;
+  grid-template-rows: auto auto 1fr auto;
   gap: 14px;
   padding: 20px 16px;
   padding-bottom: 92px;
@@ -259,6 +260,8 @@ a {
   border-radius: 22px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(248, 243, 234, 0.84));
+  align-self: end;
+  margin-top: auto;
 }
 
 .sidebar-meta p {
@@ -417,11 +420,38 @@ a {
     0 24px 48px rgba(29, 24, 19, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(20px);
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    border-color 140ms ease;
+}
+
+.activity-overlay:hover {
+  transform: translateY(-1px);
+}
+
+.activity-overlay:focus-visible {
+  outline: 2px solid rgba(15, 118, 110, 0.38);
+  outline-offset: 2px;
 }
 
 .activity-overlay-collapsed {
   width: 132px;
   padding: 12px 14px;
+}
+
+.activity-overlay-collapsed .activity-overlay-header {
+  justify-content: center;
+}
+
+.activity-overlay-collapsed .activity-overlay-heading .status-label {
+  font-size: 0;
+}
+
+.activity-overlay-collapsed .activity-overlay-heading .status-label::before {
+  content: "Latest";
+  font-size: 0.72rem;
 }
 
 .activity-overlay-expanded {
@@ -470,7 +500,6 @@ a {
   color: var(--muted);
   font: inherit;
   font-size: 0.8rem;
-  cursor: pointer;
 }
 
 .activity-console {

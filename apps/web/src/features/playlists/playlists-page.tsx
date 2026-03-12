@@ -333,20 +333,25 @@ export function PlaylistsPage() {
             className={`activity-overlay ${activityData.is_active ? "activity-overlay-live" : ""} ${
               isActivityExpanded ? "activity-overlay-expanded" : "activity-overlay-collapsed"
             }`}
+            role="button"
+            tabIndex={0}
+            onClick={() => setIsActivityExpanded((current) => !current)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                setIsActivityExpanded((current) => !current);
+              }
+            }}
+            aria-label={isActivityExpanded ? "Collapse activity log" : "Expand activity log"}
           >
             <div className="activity-overlay-header">
               <div className="activity-overlay-heading">
                 <span className="status-label">Latest activity</span>
                 {activityData.is_active && <span className="activity-live-pill">Live</span>}
               </div>
-              <button
-                className="activity-toggle-button"
-                type="button"
-                onClick={() => setIsActivityExpanded((current) => !current)}
-                aria-label={isActivityExpanded ? "Collapse activity log" : "Expand activity log"}
-              >
+              <span className="activity-toggle-button" aria-hidden="true">
                 {isActivityExpanded ? "Hide" : "Show"}
-              </button>
+              </span>
             </div>
             {isActivityExpanded ? (
               <div className="activity-console">
