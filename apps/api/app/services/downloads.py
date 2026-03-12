@@ -55,7 +55,7 @@ def download_missing_videos(
                 ~Video.download_error.like(f"{UNDOWNLOADABLE_PREFIX}%"),
             ),
         )
-        .order_by(Video.upload_date.asc().nullsfirst(), Video.created_at.asc())
+        .order_by(Video.playlist_index.asc(), Video.created_at.asc())
         .limit(batch_size)
     ).all()
 

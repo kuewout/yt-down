@@ -16,6 +16,7 @@ class Video(Base):
     playlist_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("playlists.id", ondelete="CASCADE"), nullable=False
     )
+    playlist_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     video_id: Mapped[str] = mapped_column(Text, nullable=False)
     title: Mapped[str] = mapped_column(Text, nullable=False)
     upload_date: Mapped[date | None] = mapped_column(Date, nullable=True)

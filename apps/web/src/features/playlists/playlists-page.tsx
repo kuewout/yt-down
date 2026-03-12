@@ -262,13 +262,7 @@ export function PlaylistsPage() {
           return statusDifference;
         }
 
-        const leftDate = left.upload_date ?? "";
-        const rightDate = right.upload_date ?? "";
-        if (leftDate !== rightDate) {
-          return rightDate.localeCompare(leftDate);
-        }
-
-        return left.title.localeCompare(right.title);
+        return 0;
       }) ?? [];
 
   videos.data?.items.forEach((video) => {
@@ -863,9 +857,7 @@ export function PlaylistsPage() {
                         <article className="video-row" key={video.id}>
                           <div className="video-row-main">
                             <strong>{video.title}</strong>
-                            <p className="card-meta">
-                              {video.upload_date ?? "Unknown date"} · {video.video_id}
-                            </p>
+                            <p className="card-meta">{video.upload_date ? `${video.upload_date} · ${video.video_id}` : video.video_id}</p>
                             {video.download_error && <p className="error-text compact-error">{video.download_error}</p>}
                           </div>
                           <span
