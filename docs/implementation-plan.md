@@ -36,6 +36,7 @@ Last updated: 2026-03-12
 - Sequential download of missing videos is implemented with:
   - `POST /api/playlists/{id}/download-new`
   - request-level batch size, defaulting to 5 videos per run
+  - request-level browser selection for `yt-dlp` cookie extraction
   - `yt-dlp` download execution
   - safer format selection using combined video/audio fallbacks
   - retry without browser cookies if a cookie-backed attempt fails
@@ -53,6 +54,7 @@ Last updated: 2026-03-12
   - trigger sync
   - trigger download of missing videos
   - choose a download batch size before starting a run
+  - choose a browser for `yt-dlp` before starting a run
   - poll and display current or latest backend activity
   - edit playlist settings
   - remove a playlist from tracking
@@ -62,6 +64,8 @@ Last updated: 2026-03-12
   - optional title/folder input
   - derived folder name and path defaults
   - no default browser-cookie setting for newly added playlists
+- Playlist syncing now upgrades URL-derived folder names to a human-readable title-based folder when the rename is safe.
+- The main app shell now has a collapsible left navigation rail with a compact logo-only state.
 
 ### Implemented But Not Fully Verified End-to-End
 
@@ -128,6 +132,8 @@ Still needed:
 - browser-level flow verification
 - real playlist sync/download happy-path verification
 - manual verification that playlists containing duplicate video IDs now sync cleanly
+- manual verification that automatic folder renaming behaves correctly when a synced playlist already has files on disk
+- manual verification that Atlas browser and Comet browser selections behave acceptably through the current Chrome-compatible cookie fallback path
 
 ### Planned Commit Checkpoints
 

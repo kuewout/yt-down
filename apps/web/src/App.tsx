@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, Route, Routes } from "react-router-dom";
 
 import { fetchHealth } from "./api/client";
@@ -40,17 +41,45 @@ function PlaceholderPage({ title, description }: { title: string; description: s
 }
 
 export function App() {
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${isSidebarCollapsed ? "sidebar-collapsed" : ""}`}>
       <aside className="sidebar">
         <div className="brand-block">
-          <span className="brand-kicker">yt-down</span>
-          <strong>Library Console</strong>
+          <div className="brand-lockup">
+            <div className="brand-logo" aria-hidden="true">
+              YD
+            </div>
+            {!isSidebarCollapsed && (
+              <div>
+                <span className="brand-kicker">yt-down</span>
+                <strong>Library Console</strong>
+              </div>
+            )}
+          </div>
+          <button
+            className="secondary-button sidebar-toggle"
+            type="button"
+            onClick={() => setIsSidebarCollapsed((current) => !current)}
+            aria-label={isSidebarCollapsed ? "Expand navigation" : "Collapse navigation"}
+          >
+            {isSidebarCollapsed ? ">" : "<"}
+          </button>
         </div>
         <nav className="nav">
-          <Link to="/">Overview</Link>
-          <Link to="/playlists">Playlists</Link>
-          <Link to="/settings">Settings</Link>
+          <Link to="/" aria-label="Overview">
+            <span className="nav-icon">OV</span>
+            {!isSidebarCollapsed && <span>Overview</span>}
+          </Link>
+          <Link to="/playlists" aria-label="Playlists">
+            <span className="nav-icon">PL</span>
+            {!isSidebarCollapsed && <span>Playlists</span>}
+          </Link>
+          <Link to="/settings" aria-label="Settings">
+            <span className="nav-icon">ST</span>
+            {!isSidebarCollapsed && <span>Settings</span>}
+          </Link>
         </nav>
       </aside>
       <main className="content">

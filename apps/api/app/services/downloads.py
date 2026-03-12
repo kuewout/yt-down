@@ -11,7 +11,7 @@ from app.services.ytdlp import YtDlpError, download_video
 
 
 def download_missing_videos(
-    db: Session, playlist_id: UUID, batch_size: int = 5
+    db: Session, playlist_id: UUID, batch_size: int = 5, cookies_browser: str | None = None
 ) -> tuple[Playlist, int, int, int]:
     playlist = db.get(Playlist, playlist_id)
     if playlist is None:
@@ -50,7 +50,7 @@ def download_missing_videos(
                 result = download_video(
                     url=video.webpage_url,
                     output_template=output_template,
-                    cookies_browser=playlist.cookies_browser,
+                    cookies_browser=cookies_browser if cookies_browser is not None else playlist.cookies_browser,
                     resolution_limit=playlist.resolution_limit,
                 )
             except YtDlpError as exc:

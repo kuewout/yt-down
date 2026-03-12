@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 
+import { BROWSER_OPTIONS } from "../../api/client";
 import {
   useActivity,
   useCreatePlaylist,
@@ -55,6 +56,7 @@ export function PlaylistsPage() {
   const [activeTab, setActiveTab] = useState<DetailTab>("overview");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [downloadBatchSize, setDownloadBatchSize] = useState("5");
+  const [downloadBrowser, setDownloadBrowser] = useState("");
   const selectedVideos = usePlaylistVideos(selectedPlaylistId);
   const selectedPlaylist = data?.items.find((playlist) => playlist.id === selectedPlaylistId) ?? null;
   const playlistCount = data?.items.length ?? 0;
@@ -74,6 +76,7 @@ export function PlaylistsPage() {
   useEffect(() => {
     if (!selectedPlaylist) {
       setEditForm(initialFormState);
+      setDownloadBrowser("");
       return;
     }
 
@@ -85,6 +88,7 @@ export function PlaylistsPage() {
       cookies_browser: selectedPlaylist.cookies_browser ?? "",
       resolution_limit: selectedPlaylist.resolution_limit?.toString() ?? "",
     });
+    setDownloadBrowser(selectedPlaylist.cookies_browser ?? "");
   }, [selectedPlaylist]);
 
   function updateField<K extends keyof FormState>(field: K, value: FormState[K]) {
@@ -285,6 +289,10 @@ export function PlaylistsPage() {
                         downloadNewVideos.mutate({
                           playlistId: playlist.id,
                           batchSize: Number(downloadBatchSize),
+                          cookiesBrowser:
+                            selectedPlaylistId === playlist.id
+                              ? downloadBrowser || null
+                              : playlist.cookies_browser || null,
                         });
                       }}
                     >
@@ -357,6 +365,7 @@ export function PlaylistsPage() {
                     downloadNewVideos.mutate({
                       playlistId: selectedPlaylist.id,
                       batchSize: Number(downloadBatchSize),
+                      cookiesBrowser: downloadBrowser || null,
                     })
                   }
                 >
@@ -381,8 +390,19 @@ export function PlaylistsPage() {
                     ))}
                   </select>
                 </label>
+                <label>
+                  Browser for `yt-dlp`
+                  <select value={downloadBrowser} onChange={(event) => setDownloadBrowser(event.target.value)}>
+                    {BROWSER_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <p className="hint">
-                  Each run attempts at most {downloadBatchSize} missing videos for this playlist.
+                  Each run attempts at most {downloadBatchSize} missing videos and uses{" "}
+                  {BROWSER_OPTIONS.find((option) => option.value === downloadBrowser)?.label ?? "No browser cookies"}.
                 </p>
               </div>
 
@@ -492,10 +512,16 @@ export function PlaylistsPage() {
                     </label>
                     <label>
                       Cookies browser
-                      <input
+                      <select
                         value={editForm.cookies_browser}
                         onChange={(event) => updateEditField("cookies_browser", event.target.value)}
-                      />
+                      >
+                        {BROWSER_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
                     </label>
                     <label>
                       Resolution limit
@@ -604,10 +630,16 @@ export function PlaylistsPage() {
                 </label>
                 <label>
                   Cookies browser
-                  <input
+                  <select
                     value={form.cookies_browser}
                     onChange={(event) => updateField("cookies_browser", event.target.value)}
-                  />
+                  >
+                    {BROWSER_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label>
                   Resolution limit

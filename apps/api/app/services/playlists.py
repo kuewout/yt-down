@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 from pathlib import Path
 import re
+import shutil
 from urllib.parse import parse_qs, urlparse
 from uuid import UUID
 
@@ -17,6 +18,11 @@ def build_folder_path(folder_name: str) -> str:
     return str(Path(settings.media_root).joinpath(folder_name))
 
 
+def slugify_folder_name(value: str) -> str:
+    slug = re.sub(r"[^A-Za-z0-9_-]+", "-", value).strip("-_").lower()
+    return slug or "playlist"
+
+
 def derive_folder_name(source_url: str) -> str:
     parsed = urlparse(source_url)
     query = parse_qs(parsed.query)
@@ -25,8 +31,37 @@ def derive_folder_name(source_url: str) -> str:
         path_parts = [part for part in parsed.path.split("/") if part]
         candidate = path_parts[-1] if path_parts else parsed.netloc or "playlist"
 
-    slug = re.sub(r"[^A-Za-z0-9_-]+", "-", candidate).strip("-_").lower()
-    return slug or "playlist"
+    return slugify_folder_name(candidate)
+
+
+def maybe_apply_human_readable_folder(playlist: Playlist, snapshot: PlaylistSnapshot) -> None:
+    current_folder = playlist.folder_name.strip()
+    derived_from_url = derive_folder_name(playlist.source_url)
+    if current_folder and current_folder != derived_from_url:
+        return
+
+    readable_folder = slugify_folder_name(snapshot.title)
+    if not readable_folder or readable_folder == current_folder:
+        return
+
+    old_path = Path(playlist.folder_path)
+    new_path = Path(build_folder_path(readable_folder))
+    if new_path == old_path:
+        playlist.folder_name = readable_folder
+        playlist.folder_path = str(new_path)
+        return
+
+    if new_path.exists():
+        return
+
+    if old_path.exists():
+        try:
+            shutil.move(str(old_path), str(new_path))
+        except OSError:
+            return
+
+    playlist.folder_name = readable_folder
+    playlist.folder_path = str(new_path)
 
 
 def sync_playlist(db: Session, playlist_id: UUID) -> tuple[Playlist, int]:
@@ -47,6 +82,7 @@ def sync_playlist(db: Session, playlist_id: UUID) -> tuple[Playlist, int]:
             message=f"Processing {len(snapshot.entries)} playlist entries",
             items_total=len(snapshot.entries),
         )
+        maybe_apply_human_readable_folder(playlist, snapshot)
         playlist.title = snapshot.title
         playlist.playlist_id = snapshot.playlist_id
         playlist.last_checked_at = datetime.now(UTC)
@@ -118,5 +154,7 @@ __all__ = [
     "build_folder_path",
     "derive_folder_name",
     "list_playlist_videos",
+    "maybe_apply_human_readable_folder",
+    "slugify_folder_name",
     "sync_playlist",
 ]

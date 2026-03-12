@@ -66,8 +66,15 @@ export function useDownloadNewVideos() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ playlistId, batchSize }: { playlistId: string; batchSize: number }) =>
-      downloadNewVideos(playlistId, batchSize),
+    mutationFn: ({
+      playlistId,
+      batchSize,
+      cookiesBrowser,
+    }: {
+      playlistId: string;
+      batchSize: number;
+      cookiesBrowser: string | null;
+    }) => downloadNewVideos(playlistId, batchSize, cookiesBrowser),
     onSuccess: async (_, variables) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["playlists"] }),

@@ -76,6 +76,16 @@ export type CreatePlaylistInput = {
 
 export type UpdatePlaylistInput = Partial<CreatePlaylistInput>;
 
+export const BROWSER_OPTIONS = [
+  { value: "", label: "No browser cookies" },
+  { value: "chrome", label: "Chrome" },
+  { value: "firefox", label: "Firefox" },
+  { value: "opera", label: "Opera" },
+  { value: "safari", label: "Safari" },
+  { value: "atlas", label: "Atlas browser" },
+  { value: "comet", label: "Comet browser" },
+] as const;
+
 export type SyncPlaylistResponse = {
   playlist_id: string;
   title: string;
@@ -164,10 +174,11 @@ export async function fetchPlaylistVideos(playlistId: string): Promise<VideoList
 export async function downloadNewVideos(
   playlistId: string,
   batchSize: number,
+  cookiesBrowser: string | null,
 ): Promise<DownloadNewResponse> {
   return request<DownloadNewResponse>(`/playlists/${playlistId}/download-new`, {
     method: "POST",
-    body: JSON.stringify({ batch_size: batchSize }),
+    body: JSON.stringify({ batch_size: batchSize, cookies_browser: cookiesBrowser }),
   });
 }
 

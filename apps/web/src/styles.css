@@ -39,6 +39,11 @@ a {
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
   min-height: 100vh;
+  transition: grid-template-columns 180ms ease;
+}
+
+.app-shell.sidebar-collapsed {
+  grid-template-columns: 92px minmax(0, 1fr);
 }
 
 .sidebar {
@@ -49,9 +54,35 @@ a {
 }
 
 .brand-block {
-  display: grid;
-  gap: 6px;
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 32px;
+}
+
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-logo {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: white;
+  font-size: 0.96rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.sidebar-toggle {
+  min-width: 46px;
+  padding: 0;
 }
 
 .brand-kicker,
@@ -69,10 +100,25 @@ a {
 }
 
 .nav a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   padding: 12px 14px;
   border-radius: 12px;
   background: transparent;
   transition: background-color 140ms ease;
+}
+
+.nav-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(15, 118, 110, 0.1);
+  color: var(--accent-strong);
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
 }
 
 .nav a:hover {
@@ -81,6 +127,20 @@ a {
 
 .content {
   padding: 36px;
+}
+
+.app-shell.sidebar-collapsed .sidebar {
+  padding-inline: 14px;
+}
+
+.app-shell.sidebar-collapsed .brand-block {
+  flex-direction: column;
+  align-items: center;
+}
+
+.app-shell.sidebar-collapsed .nav a {
+  justify-content: center;
+  padding-inline: 0;
 }
 
 .split-layout {
@@ -404,8 +464,8 @@ a {
 }
 
 .download-batch-row {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 240px)) minmax(0, 1fr);
   gap: 14px;
   align-items: end;
 }
@@ -576,6 +636,10 @@ a {
     grid-template-columns: 1fr;
   }
 
+  .app-shell.sidebar-collapsed {
+    grid-template-columns: 1fr;
+  }
+
   .sidebar {
     border-right: 0;
     border-bottom: 1px solid var(--panel-border);
@@ -602,9 +666,12 @@ a {
   .toolbar-row,
   .playlist-rail-header,
   .playlist-rail-actions,
-  .modal-header,
-  .download-batch-row {
+  .modal-header {
     flex-direction: column;
+  }
+
+  .download-batch-row {
+    grid-template-columns: 1fr;
   }
 
   .toolbar-button {

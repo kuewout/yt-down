@@ -24,6 +24,7 @@ router = APIRouter()
 
 class DownloadNewRequest(BaseModel):
     batch_size: int = Field(default=5, ge=1, le=100)
+    cookies_browser: str | None = None
 
 
 @router.get("", response_model=PlaylistListResponse)
@@ -120,7 +121,10 @@ def download_new_videos_route(
 ) -> dict[str, str | int]:
     try:
         playlist, downloaded_count, failed_count, attempted_count = download_missing_videos(
-            db, playlist_id, batch_size=payload.batch_size
+            db,
+            playlist_id,
+            batch_size=payload.batch_size,
+            cookies_browser=payload.cookies_browser,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc

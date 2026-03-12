@@ -32,6 +32,18 @@ class DownloadResult:
     local_path: str
 
 
+def normalize_cookies_browser(browser: str | None) -> str | None:
+    if not browser:
+        return None
+
+    normalized = browser.strip().lower()
+    aliases = {
+        "atlas": "chrome",
+        "comet": "chrome",
+    }
+    return aliases.get(normalized, normalized)
+
+
 def _build_format_selector(resolution_limit: int | None) -> str:
     if resolution_limit:
         return f"bestvideo*[height<={resolution_limit}]+bestaudio/best[height<={resolution_limit}]/best"
@@ -107,6 +119,7 @@ def download_video(
     cookies_browser: str | None = None,
     resolution_limit: int | None = None,
 ) -> DownloadResult:
+    cookies_browser = normalize_cookies_browser(cookies_browser)
     base_cmd = [
         "yt-dlp",
         "--no-progress",
