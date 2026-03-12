@@ -21,6 +21,7 @@ from app.services.playlists import (
     slugify_folder_name,
     sync_playlist,
 )
+from app.services.ytdlp import list_available_cookie_browsers
 from app.schemas.video import VideoListResponse, VideoRead
 from pydantic import BaseModel, Field
 
@@ -32,10 +33,29 @@ class DownloadNewRequest(BaseModel):
     cookies_browser: str | None = None
 
 
+class BrowserOptionResponse(BaseModel):
+    value: str
+    label: str
+
+
+class CookieBrowserAvailabilityResponse(BaseModel):
+    options: list[BrowserOptionResponse]
+    unsupported_installed: list[str]
+
+
 @router.get("", response_model=PlaylistListResponse)
 def list_playlists(db: Session = Depends(get_db)) -> PlaylistListResponse:
     playlists = db.scalars(select(Playlist).order_by(Playlist.created_at.desc())).all()
     return PlaylistListResponse(items=[PlaylistRead.model_validate(playlist) for playlist in playlists])
+
+
+@router.get("/cookie-browsers", response_model=CookieBrowserAvailabilityResponse)
+def get_cookie_browsers() -> CookieBrowserAvailabilityResponse:
+    availability = list_available_cookie_browsers()
+    return CookieBrowserAvailabilityResponse(
+        options=[BrowserOptionResponse(value=option.value, label=option.label) for option in availability.options],
+        unsupported_installed=availability.unsupported_installed,
+    )
 
 
 @router.post("", response_model=PlaylistRead, status_code=status.HTTP_201_CREATED)

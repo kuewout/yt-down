@@ -1,8 +1,9 @@
 import { FormEvent, useEffect, useState } from "react";
 
-import { ActivityResponse, BROWSER_OPTIONS } from "../../api/client";
+import { ActivityResponse } from "../../api/client";
 import {
   useActivity,
+  useCookieBrowsers,
   useCreatePlaylist,
   useDeletePlaylist,
   useDownloadNewVideos,
@@ -40,11 +41,11 @@ const initialFormState: FormState = {
   title: "",
   folder_name: "",
   folder_path: "",
-  cookies_browser: "chrome",
+  cookies_browser: "",
   resolution_limit: "1440",
 };
 
-const batchSizeOptions = [5, 10, 25, 50];
+const batchSizeOptions = [1, 5, 10, 25, 50];
 
 const detailTabs: Array<{ key: DetailTab; label: string }> = [
   { key: "overview", label: "Overview" },
@@ -142,6 +143,7 @@ function buildActivityDetail(activity: ActivityResponse): string | null {
 
 export function PlaylistsPage() {
   const { data, isLoading, isError, error } = usePlaylists();
+  const cookieBrowsers = useCookieBrowsers();
   const videos = useVideos();
   const activity = useActivity();
   const createPlaylist = useCreatePlaylist();
@@ -158,7 +160,7 @@ export function PlaylistsPage() {
   const [playlistFilter, setPlaylistFilter] = useState<PlaylistFilter>("active");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [downloadBatchSize, setDownloadBatchSize] = useState("5");
-  const [downloadBrowser, setDownloadBrowser] = useState("chrome");
+  const [downloadBrowser, setDownloadBrowser] = useState("");
   const selectedVideos = usePlaylistVideos(selectedPlaylistId);
   const selectedPlaylist = data?.items.find((playlist) => playlist.id === selectedPlaylistId) ?? null;
   const playlistCount = data?.items.length ?? 0;
@@ -175,6 +177,12 @@ export function PlaylistsPage() {
   const hasActivity = Boolean(activityData && activityData.operation);
   const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([]);
   const [isActivityExpanded, setIsActivityExpanded] = useState(false);
+  const browserOptions = [
+    { value: "", label: "No browser cookies" },
+    ...(cookieBrowsers.data?.options ?? []),
+  ];
+  const supportedBrowserValues = browserOptions.map((option) => option.value);
+  const supportedBrowserKey = supportedBrowserValues.join("|");
 
   videos.data?.items.forEach((video) => {
     const current = videoStatsByPlaylist.get(video.playlist_id) ?? { total: 0, downloaded: 0, failed: 0 };
@@ -204,20 +212,36 @@ export function PlaylistsPage() {
   useEffect(() => {
     if (!selectedPlaylist) {
       setEditForm(initialFormState);
-      setDownloadBrowser("chrome");
+      setDownloadBrowser("");
       return;
     }
 
+    const nextBrowser = selectedPlaylist.cookies_browser ?? "";
     setEditForm({
       source_url: selectedPlaylist.source_url,
       title: selectedPlaylist.title,
       folder_name: selectedPlaylist.folder_name,
       folder_path: selectedPlaylist.folder_path,
-      cookies_browser: selectedPlaylist.cookies_browser ?? "chrome",
+      cookies_browser: nextBrowser,
       resolution_limit: selectedPlaylist.resolution_limit?.toString() ?? "",
     });
-    setDownloadBrowser(selectedPlaylist.cookies_browser ?? "chrome");
+    setDownloadBrowser(nextBrowser);
   }, [selectedPlaylist]);
+
+  useEffect(() => {
+    if (!cookieBrowsers.isSuccess) {
+      return;
+    }
+
+    const supportedValues = new Set(supportedBrowserValues);
+    setForm((current) =>
+      supportedValues.has(current.cookies_browser) ? current : { ...current, cookies_browser: "" },
+    );
+    setEditForm((current) =>
+      supportedValues.has(current.cookies_browser) ? current : { ...current, cookies_browser: "" },
+    );
+    setDownloadBrowser((current) => (supportedValues.has(current) ? current : ""));
+  }, [cookieBrowsers.isSuccess, supportedBrowserKey]);
 
   useEffect(() => {
     if (!activityData || !activityData.operation) {
@@ -438,6 +462,12 @@ export function PlaylistsPage() {
           {activity.isError && (
             <p className="error-text">
               Activity unavailable: {activity.error instanceof Error ? activity.error.message : "Unknown error"}
+            </p>
+          )}
+          {cookieBrowsers.isError && (
+            <p className="error-text">
+              Cookie browser detection failed:{" "}
+              {cookieBrowsers.error instanceof Error ? cookieBrowsers.error.message : "Unknown error"}
             </p>
           )}
 
@@ -664,7 +694,7 @@ export function PlaylistsPage() {
                     >
                       {batchSizeOptions.map((option) => (
                         <option key={option} value={option.toString()}>
-                          {option} videos
+                          {option} {option === 1 ? "video" : "videos"}
                         </option>
                       ))}
                     </select>
@@ -672,7 +702,7 @@ export function PlaylistsPage() {
                   <label>
                     Browser for `yt-dlp`
                     <select value={downloadBrowser} onChange={(event) => setDownloadBrowser(event.target.value)}>
-                      {BROWSER_OPTIONS.map((option) => (
+                      {browserOptions.map((option) => (
                         <option key={option.value} value={option.value}>
                           {option.label}
                         </option>
@@ -683,6 +713,11 @@ export function PlaylistsPage() {
               ) : (
                 <p className="hint">Inactive playlists stay view-only. You can still sync them from YouTube.</p>
               )}
+              {cookieBrowsers.data?.unsupported_installed.length ? (
+                <p className="hint">
+                  Installed but not exposed by `yt-dlp`: {cookieBrowsers.data.unsupported_installed.join(", ")}.
+                </p>
+              ) : null}
 
               <div className="tab-row" role="tablist" aria-label="Playlist detail sections">
                 {detailTabs.map((tab) => (
@@ -814,7 +849,7 @@ export function PlaylistsPage() {
                         value={editForm.cookies_browser}
                         onChange={(event) => updateEditField("cookies_browser", event.target.value)}
                       >
-                        {BROWSER_OPTIONS.map((option) => (
+                        {browserOptions.map((option) => (
                           <option key={option.value} value={option.value}>
                             {option.label}
                           </option>
@@ -941,7 +976,7 @@ export function PlaylistsPage() {
                     value={form.cookies_browser}
                     onChange={(event) => updateField("cookies_browser", event.target.value)}
                   >
-                    {BROWSER_OPTIONS.map((option) => (
+                    {browserOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>

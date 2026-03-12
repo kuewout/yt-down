@@ -77,15 +77,15 @@ export type CreatePlaylistInput = {
 
 export type UpdatePlaylistInput = Partial<CreatePlaylistInput>;
 
-export const BROWSER_OPTIONS = [
-  { value: "", label: "No browser cookies" },
-  { value: "chrome", label: "Chrome" },
-  { value: "firefox", label: "Firefox" },
-  { value: "opera", label: "Opera" },
-  { value: "safari", label: "Safari" },
-  { value: "atlas", label: "Atlas browser" },
-  { value: "comet", label: "Comet browser" },
-] as const;
+export type CookieBrowserOption = {
+  value: string;
+  label: string;
+};
+
+export type CookieBrowserAvailabilityResponse = {
+  options: CookieBrowserOption[];
+  unsupported_installed: string[];
+};
 
 export type SyncPlaylistResponse = {
   playlist_id: string;
@@ -153,6 +153,10 @@ export async function fetchActivity(): Promise<ActivityResponse> {
 
 export async function fetchPlaylists(): Promise<PlaylistListResponse> {
   return request<PlaylistListResponse>("/playlists");
+}
+
+export async function fetchCookieBrowsers(): Promise<CookieBrowserAvailabilityResponse> {
+  return request<CookieBrowserAvailabilityResponse>("/playlists/cookie-browsers");
 }
 
 export async function createPlaylist(input: CreatePlaylistInput): Promise<Playlist> {

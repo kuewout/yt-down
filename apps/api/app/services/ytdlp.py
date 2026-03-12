@@ -1,8 +1,29 @@
 import json
+import platform
+import re
 import subprocess
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Callable
+
+
+PROGRESS_LINE_RE = re.compile(r"^\[download\]\s+(?P<progress>.+)$")
+SUPPORTED_MACOS_BROWSER_APPS: dict[str, tuple[str, ...]] = {
+    "brave": ("Brave Browser.app",),
+    "chrome": ("Google Chrome.app", "Chrome.app"),
+    "chromium": ("Chromium.app",),
+    "edge": ("Microsoft Edge.app",),
+    "firefox": ("Firefox.app",),
+    "opera": ("Opera.app",),
+    "safari": ("Safari.app",),
+    "vivaldi": ("Vivaldi.app",),
+    "whale": ("Whale.app",),
+}
+UNSUPPORTED_MACOS_BROWSER_APPS: dict[str, tuple[str, ...]] = {
+    "Atlas": ("ChatGPT Atlas.app", "Atlas.app"),
+    "Comet": ("Comet.app",),
+}
 
 
 class YtDlpError(RuntimeError):
@@ -44,6 +65,18 @@ def normalize_cookies_browser(browser: str | None) -> str | None:
     return aliases.get(normalized, normalized)
 
 
+@dataclass(frozen=True)
+class BrowserOption:
+    value: str
+    label: str
+
+
+@dataclass(frozen=True)
+class BrowserAvailability:
+    options: list[BrowserOption]
+    unsupported_installed: list[str]
+
+
 def _build_format_selector(resolution_limit: int | None) -> str:
     if resolution_limit:
         return f"bestvideo*[height<={resolution_limit}]+bestaudio/best[height<={resolution_limit}]/best"
@@ -51,12 +84,71 @@ def _build_format_selector(resolution_limit: int | None) -> str:
     return "bestvideo*+bestaudio/best"
 
 
-def _run_yt_dlp_command(cmd: list[str]) -> DownloadResult:
-    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-    if result.returncode != 0:
-        raise YtDlpError(result.stderr.strip() or "yt-dlp failed to download video")
+def _supported_browser_labels() -> dict[str, str]:
+    return {
+        "brave": "Brave",
+        "chrome": "Chrome",
+        "chromium": "Chromium",
+        "edge": "Microsoft Edge",
+        "firefox": "Firefox",
+        "opera": "Opera",
+        "safari": "Safari",
+        "vivaldi": "Vivaldi",
+        "whale": "Whale",
+    }
 
-    lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+def list_available_cookie_browsers() -> BrowserAvailability:
+    labels = _supported_browser_labels()
+    options = [BrowserOption(value=value, label=label) for value, label in labels.items()]
+    unsupported_installed: list[str] = []
+
+    if platform.system() == "Darwin":
+        app_roots = [Path("/Applications"), Path.home() / "Applications"]
+        for label, app_names in UNSUPPORTED_MACOS_BROWSER_APPS.items():
+            if any((root / app_name).exists() for root in app_roots for app_name in app_names):
+                unsupported_installed.append(label)
+
+    options.sort(key=lambda option: option.label.lower())
+    return BrowserAvailability(
+        options=options,
+        unsupported_installed=sorted(unsupported_installed),
+    )
+
+
+def _run_yt_dlp_command(
+    cmd: list[str],
+    progress_callback: Callable[[str], None] | None = None,
+) -> DownloadResult:
+    process = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,
+    )
+
+    stdout_lines: list[str] = []
+    stderr_lines: list[str] = []
+
+    if process.stderr is not None:
+        for raw_line in process.stderr:
+            line = raw_line.strip()
+            if not line:
+                continue
+            stderr_lines.append(line)
+            match = PROGRESS_LINE_RE.match(line)
+            if match and progress_callback is not None:
+                progress_callback(match.group("progress"))
+
+    if process.stdout is not None:
+        stdout_lines = [line.strip() for line in process.stdout if line.strip()]
+
+    return_code = process.wait()
+    if return_code != 0:
+        raise YtDlpError("\n".join(stderr_lines).strip() or "yt-dlp failed to download video")
+
+    lines = stdout_lines
     local_path = lines[-1] if lines else ""
     if not local_path:
         raise YtDlpError("yt-dlp did not report a downloaded file path")
@@ -118,11 +210,11 @@ def download_video(
     output_template: str,
     cookies_browser: str | None = None,
     resolution_limit: int | None = None,
+    progress_callback: Callable[[str], None] | None = None,
 ) -> DownloadResult:
     cookies_browser = normalize_cookies_browser(cookies_browser)
     base_cmd = [
         "yt-dlp",
-        "--no-progress",
         "--print",
         "after_move:filepath",
         "-f",
@@ -134,15 +226,16 @@ def download_video(
     if cookies_browser:
         try:
             return _run_yt_dlp_command(
-                ["yt-dlp", "--no-progress", "--print", "after_move:filepath", "--cookies-from-browser", cookies_browser]
-                + ["-f", _build_format_selector(resolution_limit), "-o", output_template, url]
+                ["yt-dlp", "--print", "after_move:filepath", "--cookies-from-browser", cookies_browser]
+                + ["-f", _build_format_selector(resolution_limit), "-o", output_template, url],
+                progress_callback=progress_callback,
             )
         except YtDlpError as exc:
             try:
-                return _run_yt_dlp_command(base_cmd)
+                return _run_yt_dlp_command(base_cmd, progress_callback=progress_callback)
             except YtDlpError:
                 raise YtDlpError(
                     f"{exc} | retry without cookies also failed"
                 ) from exc
 
-    return _run_yt_dlp_command(base_cmd)
+    return _run_yt_dlp_command(base_cmd, progress_callback=progress_callback)

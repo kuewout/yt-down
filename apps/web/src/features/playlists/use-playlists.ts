@@ -4,6 +4,7 @@ import {
   createPlaylist,
   deletePlaylist,
   downloadNewVideos,
+  fetchCookieBrowsers,
   fetchActivity,
   fetchPlaylistVideos,
   fetchPlaylists,
@@ -23,11 +24,19 @@ export function usePlaylists() {
   });
 }
 
+export function useCookieBrowsers() {
+  return useQuery({
+    queryKey: ["cookie-browsers"],
+    queryFn: fetchCookieBrowsers,
+    staleTime: 60_000,
+  });
+}
+
 export function useActivity() {
   return useQuery({
     queryKey: ["activity"],
     queryFn: fetchActivity,
-    refetchInterval: 3000,
+    refetchInterval: 1000,
   });
 }
 
