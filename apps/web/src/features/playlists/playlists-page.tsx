@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 
-import { BROWSER_OPTIONS } from "../../api/client";
+import { ActivityResponse, BROWSER_OPTIONS } from "../../api/client";
 import {
   useActivity,
   useCreatePlaylist,
@@ -26,6 +26,14 @@ type FormState = {
 
 type DetailTab = "overview" | "videos" | "settings";
 type PlaylistFilter = "active" | "inactive";
+type ActivityLogEntry = {
+  key: string;
+  title: string;
+  detail: string | null;
+  counter: string | null;
+  isActive: boolean;
+  createdAt: string;
+};
 
 const initialFormState: FormState = {
   source_url: "",
@@ -95,6 +103,43 @@ function openExternalUrl(url: string) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
+function formatLogTime(timestamp: string): string {
+  const value = new Date(timestamp);
+  if (Number.isNaN(value.getTime())) {
+    return "--:--";
+  }
+
+  return value.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function buildActivityTitle(activity: ActivityResponse): string {
+  if (activity.playlist_title) {
+    return `${activity.operation} · ${activity.playlist_title}`;
+  }
+
+  return activity.operation ?? "Idle";
+}
+
+function buildActivityCounter(activity: ActivityResponse): string | null {
+  if (activity.items_total !== null) {
+    return `${activity.items_completed}/${activity.items_total}`;
+  }
+
+  if (activity.items_completed > 0) {
+    return `${activity.items_completed}`;
+  }
+
+  return null;
+}
+
+function buildActivityDetail(activity: ActivityResponse): string | null {
+  const parts = [activity.message, activity.video_title].filter(Boolean);
+  return parts.length ? parts.join(" · ") : null;
+}
+
 export function PlaylistsPage() {
   const { data, isLoading, isError, error } = usePlaylists();
   const videos = useVideos();
@@ -128,6 +173,8 @@ export function PlaylistsPage() {
     data?.items.filter((playlist) => (playlistFilter === "active" ? playlist.active : !playlist.active)) ?? [];
   const activityData = activity.data;
   const hasActivity = Boolean(activityData && activityData.operation);
+  const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([]);
+  const [isActivityExpanded, setIsActivityExpanded] = useState(false);
 
   videos.data?.items.forEach((video) => {
     const current = videoStatsByPlaylist.get(video.playlist_id) ?? { total: 0, downloaded: 0, failed: 0 };
@@ -171,6 +218,41 @@ export function PlaylistsPage() {
     });
     setDownloadBrowser(selectedPlaylist.cookies_browser ?? "chrome");
   }, [selectedPlaylist]);
+
+  useEffect(() => {
+    if (!activityData || !activityData.operation) {
+      return;
+    }
+
+    const key = [
+      activityData.updated_at ?? activityData.finished_at ?? activityData.started_at ?? "unknown",
+      activityData.operation,
+      activityData.playlist_id ?? "none",
+      activityData.video_id ?? "none",
+      activityData.items_completed,
+      activityData.message ?? "",
+    ].join(":");
+
+    const nextEntry: ActivityLogEntry = {
+      key,
+      title: buildActivityTitle(activityData),
+      detail: buildActivityDetail(activityData),
+      counter: buildActivityCounter(activityData),
+      isActive: activityData.is_active,
+      createdAt: activityData.updated_at ?? activityData.finished_at ?? activityData.started_at ?? new Date().toISOString(),
+    };
+
+    setActivityLog((current) => {
+      if (current[0]?.key === key || current.some((entry) => entry.key === key)) {
+        return current;
+      }
+      return [nextEntry, ...current].slice(0, 8);
+    });
+
+    if (activityData.is_active && activityData.operation.toLowerCase().includes("download")) {
+      setIsActivityExpanded(true);
+    }
+  }, [activityData]);
 
   function updateField<K extends keyof FormState>(field: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -247,26 +329,41 @@ export function PlaylistsPage() {
     <>
       <div className="playlist-page">
         {hasActivity && activityData && (
-          <section className={`activity-overlay ${activityData.is_active ? "activity-overlay-live" : ""}`}>
+          <section
+            className={`activity-overlay ${activityData.is_active ? "activity-overlay-live" : ""} ${
+              isActivityExpanded ? "activity-overlay-expanded" : "activity-overlay-collapsed"
+            }`}
+          >
             <div className="activity-overlay-header">
-              <span className="status-label">
-                {activityData.is_active ? "Current activity" : "Latest activity"}
-              </span>
-              {activityData.is_active && <span className="activity-live-pill">Live</span>}
+              <div className="activity-overlay-heading">
+                <span className="status-label">Latest activity</span>
+                {activityData.is_active && <span className="activity-live-pill">Live</span>}
+              </div>
+              <button
+                className="activity-toggle-button"
+                type="button"
+                onClick={() => setIsActivityExpanded((current) => !current)}
+                aria-label={isActivityExpanded ? "Collapse activity log" : "Expand activity log"}
+              >
+                {isActivityExpanded ? "Hide" : "Show"}
+              </button>
             </div>
-            <strong className="activity-overlay-title">
-              {activityData.operation}
-              {activityData.playlist_title ? ` · ${activityData.playlist_title}` : ""}
-            </strong>
-            {activityData.message && <p className="hint status-copy">{activityData.message}</p>}
-            {(activityData.items_total !== null || activityData.video_title) && (
-              <p className="hint status-copy">
-                {activityData.video_title ? `${activityData.video_title} · ` : ""}
-                {activityData.items_total !== null
-                  ? `${activityData.items_completed}/${activityData.items_total}`
-                  : `${activityData.items_completed}`}
-              </p>
-            )}
+            <div className="activity-console">
+              {activityLog.length ? (
+                activityLog.map((entry) => (
+                  <article key={entry.key} className={`activity-log-entry ${entry.isActive ? "is-live" : ""}`}>
+                    <span className="activity-log-time">{formatLogTime(entry.createdAt)}</span>
+                    <div className="activity-log-copy">
+                      <strong>{entry.title}</strong>
+                      {entry.detail && <p className="hint status-copy">{entry.detail}</p>}
+                    </div>
+                    {entry.counter && <span className="activity-log-counter">{entry.counter}</span>}
+                  </article>
+                ))
+              ) : (
+                <p className="hint status-copy">No recent activity yet.</p>
+              )}
+            </div>
           </section>
         )}
 

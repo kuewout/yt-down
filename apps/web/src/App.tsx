@@ -177,29 +177,33 @@ export function App() {
               </div>
             )}
           </div>
-          <button
-            className="sidebar-toggle"
-            type="button"
-            onClick={() => setIsSidebarCollapsed((current) => !current)}
-            aria-label={isSidebarCollapsed ? "Expand navigation" : "Collapse navigation"}
-          >
-            <span className="sidebar-toggle-icon" aria-hidden="true">
-              <ChevronDoubleIcon collapsed={isSidebarCollapsed} />
-            </span>
-            {!isSidebarCollapsed && <span>Collapse</span>}
-          </button>
         </div>
 
         {!isSidebarCollapsed && <span className="nav-section-label">Workspace</span>}
         <Navigation collapsed={isSidebarCollapsed} />
 
-        {!isSidebarCollapsed && (
-          <div className="sidebar-footer">
+        <div className="sidebar-spacer" />
+
+        <div className="sidebar-footer">
+          {!isSidebarCollapsed && (
+            <>
             <span className="status-label">Library mode</span>
             <strong>Local-first download control</strong>
             <p className="hint">Playlists, sync status, and downloads stay one click away.</p>
-          </div>
-        )}
+            </>
+          )}
+          <button
+            className="sidebar-toggle"
+            type="button"
+            onClick={() => setIsSidebarCollapsed((current) => !current)}
+            aria-label={isSidebarCollapsed ? "Expand navigation" : "Collapse navigation"}
+            title={isSidebarCollapsed ? "Expand navigation" : "Collapse navigation"}
+          >
+            <span className="sidebar-toggle-icon" aria-hidden="true">
+              <ChevronDoubleIcon collapsed={isSidebarCollapsed} />
+            </span>
+          </button>
+        </div>
       </aside>
 
       <div className="mobile-topbar">
