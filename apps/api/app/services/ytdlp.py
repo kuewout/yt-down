@@ -101,13 +101,19 @@ def _supported_browser_labels() -> dict[str, str]:
 
 def list_available_cookie_browsers() -> BrowserAvailability:
     labels = _supported_browser_labels()
-    options = [BrowserOption(value=value, label=label) for value, label in labels.items()]
+    options = [
+        BrowserOption(value=value, label=label) for value, label in labels.items()
+    ]
     unsupported_installed: list[str] = []
 
     if platform.system() == "Darwin":
         app_roots = [Path("/Applications"), Path.home() / "Applications"]
         for label, app_names in UNSUPPORTED_MACOS_BROWSER_APPS.items():
-            if any((root / app_name).exists() for root in app_roots for app_name in app_names):
+            if any(
+                (root / app_name).exists()
+                for root in app_roots
+                for app_name in app_names
+            ):
                 unsupported_installed.append(label)
 
     options.sort(key=lambda option: option.label.lower())
@@ -147,13 +153,17 @@ def _run_yt_dlp_command(
 
     return_code = process.wait()
     if return_code != 0:
-        raise YtDlpError("\n".join(stderr_lines).strip() or "yt-dlp failed to download video")
+        raise YtDlpError(
+            "\n".join(stderr_lines).strip() or "yt-dlp failed to download video"
+        )
 
     local_path = ""
     upload_date: datetime | None = None
     for line in stdout_lines:
         if line.startswith("YT_DOWN_UPLOAD_DATE:"):
-            upload_date = _parse_upload_date(line.removeprefix("YT_DOWN_UPLOAD_DATE:").strip() or None)
+            upload_date = _parse_upload_date(
+                line.removeprefix("YT_DOWN_UPLOAD_DATE:").strip() or None
+            )
         elif line.startswith("YT_DOWN_FILEPATH:"):
             local_path = line.removeprefix("YT_DOWN_FILEPATH:").strip()
 
@@ -175,7 +185,9 @@ def _parse_upload_date(value: str | None) -> datetime | None:
     return parsed.replace(tzinfo=UTC)
 
 
-def _load_json_payload(result: subprocess.CompletedProcess[str], error_message: str) -> dict | None:
+def _load_json_payload(
+    result: subprocess.CompletedProcess[str], error_message: str
+) -> dict | None:
     if result.returncode != 0 and not result.stdout.strip():
         raise YtDlpError(result.stderr.strip() or error_message)
 
@@ -207,7 +219,9 @@ def fetch_flat_playlist(url: str) -> PlaylistSnapshot:
     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     payload = _load_json_payload(result, "yt-dlp failed to fetch playlist metadata")
     if payload is None:
-        raise YtDlpError(result.stderr.strip() or "yt-dlp did not return playlist metadata")
+        raise YtDlpError(
+            result.stderr.strip() or "yt-dlp did not return playlist metadata"
+        )
 
     entries: list[PlaylistEntry] = []
     for raw_entry in payload.get("entries", []):
@@ -271,15 +285,21 @@ def download_video(
                     "--cookies-from-browser",
                     cookies_browser,
                 ]
-                + ["-f", _build_format_selector(resolution_limit), "-o", output_template, url],
+                + [
+                    "-f",
+                    _build_format_selector(resolution_limit),
+                    "-o",
+                    output_template,
+                    url,
+                ],
                 progress_callback=progress_callback,
             )
         except YtDlpError as exc:
             try:
-                return _run_yt_dlp_command(base_cmd, progress_callback=progress_callback)
+                return _run_yt_dlp_command(
+                    base_cmd, progress_callback=progress_callback
+                )
             except YtDlpError:
-                raise YtDlpError(
-                    f"{exc} | retry without cookies also failed"
-                ) from exc
+                raise YtDlpError(f"{exc} | retry without cookies also failed") from exc
 
     return _run_yt_dlp_command(base_cmd, progress_callback=progress_callback)

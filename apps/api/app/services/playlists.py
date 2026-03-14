@@ -25,7 +25,10 @@ def slugify_folder_name(value: str) -> str:
 
 
 def resolve_unique_folder_name(
-    db: Session, preferred_name: str, exclude_playlist_id: UUID | None = None, current_path: str | None = None
+    db: Session,
+    preferred_name: str,
+    exclude_playlist_id: UUID | None = None,
+    current_path: str | None = None,
 ) -> str:
     base_name = slugify_folder_name(preferred_name)
     suffix = 1
@@ -35,14 +38,22 @@ def resolve_unique_folder_name(
         candidate_path = build_folder_path(candidate)
 
         folder_name_query = select(Playlist).where(Playlist.folder_name == candidate)
-        folder_path_query = select(Playlist).where(Playlist.folder_path == candidate_path)
+        folder_path_query = select(Playlist).where(
+            Playlist.folder_path == candidate_path
+        )
         if exclude_playlist_id:
-            folder_name_query = folder_name_query.where(Playlist.id != exclude_playlist_id)
-            folder_path_query = folder_path_query.where(Playlist.id != exclude_playlist_id)
+            folder_name_query = folder_name_query.where(
+                Playlist.id != exclude_playlist_id
+            )
+            folder_path_query = folder_path_query.where(
+                Playlist.id != exclude_playlist_id
+            )
 
         existing_playlist = db.scalar(folder_name_query)
         path_conflict = db.scalar(folder_path_query)
-        filesystem_conflict = Path(candidate_path).exists() and candidate_path != current_path
+        filesystem_conflict = (
+            Path(candidate_path).exists() and candidate_path != current_path
+        )
 
         if not existing_playlist and not path_conflict and not filesystem_conflict:
             return candidate
@@ -51,7 +62,10 @@ def resolve_unique_folder_name(
 
 
 def folder_assignment_conflicts(
-    db: Session, folder_name: str, folder_path: str, exclude_playlist_id: UUID | None = None
+    db: Session,
+    folder_name: str,
+    folder_path: str,
+    exclude_playlist_id: UUID | None = None,
 ) -> bool:
     folder_name_query = select(Playlist).where(Playlist.folder_name == folder_name)
     folder_path_query = select(Playlist).where(Playlist.folder_path == folder_path)
@@ -66,10 +80,14 @@ def prepare_new_playlist_folder(
     db: Session, title: str | None, folder_name: str | None, folder_path: str | None
 ) -> tuple[str, str, bool]:
     if folder_name or folder_path:
-        resolved_folder_name = slugify_folder_name(folder_name or Path(folder_path or "").name or "playlist")
+        resolved_folder_name = slugify_folder_name(
+            folder_name or Path(folder_path or "").name or "playlist"
+        )
         resolved_folder_path = folder_path or build_folder_path(resolved_folder_name)
         if folder_assignment_conflicts(db, resolved_folder_name, resolved_folder_path):
-            raise ValueError("Folder name or path is already in use by another playlist")
+            raise ValueError(
+                "Folder name or path is already in use by another playlist"
+            )
         return resolved_folder_name, resolved_folder_path, False
 
     preferred_name = title or "playlist"
@@ -88,7 +106,10 @@ def apply_title_folder_name(db: Session, playlist: Playlist, title: str) -> None
         current_path=playlist.folder_path,
     )
     target_folder_path = build_folder_path(target_folder_name)
-    if playlist.folder_name == target_folder_name and playlist.folder_path == target_folder_path:
+    if (
+        playlist.folder_name == target_folder_name
+        and playlist.folder_path == target_folder_path
+    ):
         return
 
     old_path = Path(playlist.folder_path)
@@ -146,10 +167,14 @@ def sync_playlist(db: Session, playlist_id: UUID) -> tuple[Playlist, int]:
     return playlist, created_count
 
 
-def _upsert_playlist_entries(db: Session, playlist: Playlist, snapshot: PlaylistSnapshot) -> int:
+def _upsert_playlist_entries(
+    db: Session, playlist: Playlist, snapshot: PlaylistSnapshot
+) -> int:
     existing_videos = {
         video.video_id: video
-        for video in db.scalars(select(Video).where(Video.playlist_id == playlist.id)).all()
+        for video in db.scalars(
+            select(Video).where(Video.playlist_id == playlist.id)
+        ).all()
     }
     created_count = 0
     now = datetime.now(UTC)
@@ -178,7 +203,9 @@ def _upsert_playlist_entries(db: Session, playlist: Playlist, snapshot: Playlist
 
         video.playlist_index = playlist_index
         video.title = entry.title
-        video.upload_date = entry.upload_date.date() if entry.upload_date else video.upload_date
+        video.upload_date = (
+            entry.upload_date.date() if entry.upload_date else video.upload_date
+        )
         video.duration_seconds = entry.duration_seconds
         video.webpage_url = entry.webpage_url
         video.thumbnail_url = entry.thumbnail_url

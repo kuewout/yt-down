@@ -37,7 +37,9 @@ class ActivityRegistry:
         with self._condition:
             return self._version
 
-    def wait_for_change(self, version: int, timeout: float = 15.0) -> tuple[int, ActivitySnapshot]:
+    def wait_for_change(
+        self, version: int, timeout: float = 15.0
+    ) -> tuple[int, ActivitySnapshot]:
         with self._condition:
             self._condition.wait_for(lambda: self._version != version, timeout=timeout)
             return self._version, ActivitySnapshot(**self._snapshot.__dict__)
@@ -102,7 +104,9 @@ class ActivityRegistry:
             self._snapshot.updated_at = now
             self._publish_locked()
 
-    def complete(self, *, message: str | None = None, items_completed: int | None = None) -> None:
+    def complete(
+        self, *, message: str | None = None, items_completed: int | None = None
+    ) -> None:
         now = datetime.now(UTC)
         with self._condition:
             self._snapshot.status = "succeeded"

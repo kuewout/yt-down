@@ -25,7 +25,9 @@ async def stream_activity(request: Request) -> StreamingResponse:
             if await request.is_disconnected():
                 break
 
-            next_version, next_snapshot = await asyncio.to_thread(activity_registry.wait_for_change, version, 15.0)
+            next_version, next_snapshot = await asyncio.to_thread(
+                activity_registry.wait_for_change, version, 15.0
+            )
             if await request.is_disconnected():
                 break
 

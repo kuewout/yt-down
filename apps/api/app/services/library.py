@@ -123,7 +123,9 @@ def _build_normalized_index(files: list[Path]) -> dict[str, list[Path]]:
     return index
 
 
-def _match_video_file(video: Video, files_by_normalized_stem: dict[str, list[Path]]) -> Path | None:
+def _match_video_file(
+    video: Video, files_by_normalized_stem: dict[str, list[Path]]
+) -> Path | None:
     normalized_stem = _normalize_name(_expected_stem(video))
     if not normalized_stem:
         return None

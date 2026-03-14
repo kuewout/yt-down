@@ -10,7 +10,12 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models import Playlist
-from app.schemas import PlaylistCreate, PlaylistListResponse, PlaylistRead, PlaylistUpdate
+from app.schemas import (
+    PlaylistCreate,
+    PlaylistListResponse,
+    PlaylistRead,
+    PlaylistUpdate,
+)
 from app.services.downloads import download_missing_videos
 from app.services.playlists import (
     YtDlpError,
@@ -46,20 +51,27 @@ class CookieBrowserAvailabilityResponse(BaseModel):
 @router.get("", response_model=PlaylistListResponse)
 def list_playlists(db: Session = Depends(get_db)) -> PlaylistListResponse:
     playlists = db.scalars(select(Playlist).order_by(Playlist.created_at.desc())).all()
-    return PlaylistListResponse(items=[PlaylistRead.model_validate(playlist) for playlist in playlists])
+    return PlaylistListResponse(
+        items=[PlaylistRead.model_validate(playlist) for playlist in playlists]
+    )
 
 
 @router.get("/cookie-browsers", response_model=CookieBrowserAvailabilityResponse)
 def get_cookie_browsers() -> CookieBrowserAvailabilityResponse:
     availability = list_available_cookie_browsers()
     return CookieBrowserAvailabilityResponse(
-        options=[BrowserOptionResponse(value=option.value, label=option.label) for option in availability.options],
+        options=[
+            BrowserOptionResponse(value=option.value, label=option.label)
+            for option in availability.options
+        ],
         unsupported_installed=availability.unsupported_installed,
     )
 
 
 @router.post("", response_model=PlaylistRead, status_code=status.HTTP_201_CREATED)
-def create_playlist(payload: PlaylistCreate, db: Session = Depends(get_db)) -> PlaylistRead:
+def create_playlist(
+    payload: PlaylistCreate, db: Session = Depends(get_db)
+) -> PlaylistRead:
     data = payload.model_dump()
     try:
         folder_name, folder_path, use_title_as_folder = prepare_new_playlist_folder(
@@ -69,7 +81,9 @@ def create_playlist(payload: PlaylistCreate, db: Session = Depends(get_db)) -> P
             folder_path=data["folder_path"] or None,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
     data["folder_name"] = folder_name
     data["folder_path"] = folder_path
     data["use_title_as_folder"] = use_title_as_folder
@@ -82,7 +96,9 @@ def create_playlist(payload: PlaylistCreate, db: Session = Depends(get_db)) -> P
         db.commit()
     except IntegrityError as exc:
         db.rollback()
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Playlist already exists") from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Playlist already exists"
+        ) from exc
 
     db.refresh(playlist)
     return PlaylistRead.model_validate(playlist)
@@ -92,7 +108,9 @@ def create_playlist(payload: PlaylistCreate, db: Session = Depends(get_db)) -> P
 def get_playlist(playlist_id: UUID, db: Session = Depends(get_db)) -> PlaylistRead:
     playlist = db.get(Playlist, playlist_id)
     if playlist is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Playlist not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Playlist not found"
+        )
 
     return PlaylistRead.model_validate(playlist)
 
@@ -103,14 +121,18 @@ def update_playlist(
 ) -> PlaylistRead:
     playlist = db.get(Playlist, playlist_id)
     if playlist is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Playlist not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Playlist not found"
+        )
 
     update_data = payload.model_dump(exclude_unset=True)
     if "folder_name" in update_data or "folder_path" in update_data:
         resolved_folder_name = slugify_folder_name(
             update_data.get("folder_name", playlist.folder_name) or playlist.folder_name
         )
-        resolved_folder_path = update_data.get("folder_path") or build_folder_path(resolved_folder_name)
+        resolved_folder_path = update_data.get("folder_path") or build_folder_path(
+            resolved_folder_name
+        )
         if folder_assignment_conflicts(
             db,
             resolved_folder_name,
@@ -132,31 +154,45 @@ def update_playlist(
         db.commit()
     except IntegrityError as exc:
         db.rollback()
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Playlist update conflicts") from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Playlist update conflicts"
+        ) from exc
 
     db.refresh(playlist)
     return PlaylistRead.model_validate(playlist)
 
 
 @router.get("/{playlist_id}/videos", response_model=VideoListResponse)
-def get_playlist_videos(playlist_id: UUID, db: Session = Depends(get_db)) -> VideoListResponse:
+def get_playlist_videos(
+    playlist_id: UUID, db: Session = Depends(get_db)
+) -> VideoListResponse:
     playlist = db.get(Playlist, playlist_id)
     if playlist is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Playlist not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Playlist not found"
+        )
 
     videos = list_playlist_videos(db, playlist_id)
-    return VideoListResponse(items=[VideoRead.model_validate(video) for video in videos])
+    return VideoListResponse(
+        items=[VideoRead.model_validate(video) for video in videos]
+    )
 
 
 @router.post("/{playlist_id}/sync")
-def sync_playlist_route(playlist_id: UUID, db: Session = Depends(get_db)) -> dict[str, str | int]:
+def sync_playlist_route(
+    playlist_id: UUID, db: Session = Depends(get_db)
+) -> dict[str, str | int]:
     try:
         playlist, created_count = sync_playlist(db, playlist_id)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     except YtDlpError as exc:
         db.rollback()
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)
+        ) from exc
 
     return {
         "playlist_id": str(playlist.id),
@@ -173,17 +209,23 @@ def download_new_videos_route(
     db: Session = Depends(get_db),
 ) -> dict[str, str | int]:
     try:
-        playlist, downloaded_count, failed_count, attempted_count = download_missing_videos(
-            db,
-            playlist_id,
-            batch_size=payload.batch_size,
-            cookies_browser=payload.cookies_browser,
+        playlist, downloaded_count, failed_count, attempted_count = (
+            download_missing_videos(
+                db,
+                playlist_id,
+                batch_size=payload.batch_size,
+                cookies_browser=payload.cookies_browser,
+            )
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     except YtDlpError as exc:
         db.rollback()
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)
+        ) from exc
 
     return {
         "playlist_id": str(playlist.id),
@@ -198,11 +240,16 @@ def download_new_videos_route(
 def open_playlist_folder(playlist_id: UUID, db: Session = Depends(get_db)) -> Response:
     playlist = db.get(Playlist, playlist_id)
     if playlist is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Playlist not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Playlist not found"
+        )
 
     folder_path = Path(playlist.folder_path).expanduser().resolve()
     if not folder_path.exists() or not folder_path.is_dir():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Playlist folder does not exist")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Playlist folder does not exist",
+        )
 
     system = platform.system()
     if system == "Darwin":
@@ -215,9 +262,15 @@ def open_playlist_folder(playlist_id: UUID, db: Session = Depends(get_db)) -> Re
     try:
         subprocess.run(command, check=True)
     except FileNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="System file explorer is unavailable") from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="System file explorer is unavailable",
+        ) from exc
     except subprocess.CalledProcessError as exc:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to open playlist folder") from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to open playlist folder",
+        ) from exc
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -226,7 +279,9 @@ def open_playlist_folder(playlist_id: UUID, db: Session = Depends(get_db)) -> Re
 def delete_playlist(playlist_id: UUID, db: Session = Depends(get_db)) -> Response:
     playlist = db.get(Playlist, playlist_id)
     if playlist is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Playlist not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Playlist not found"
+        )
 
     db.delete(playlist)
     db.commit()

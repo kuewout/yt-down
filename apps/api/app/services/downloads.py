@@ -37,7 +37,10 @@ def _is_undownloadable_error(message: str) -> bool:
 
 
 def download_missing_videos(
-    db: Session, playlist_id: UUID, batch_size: int = 5, cookies_browser: str | None = None
+    db: Session,
+    playlist_id: UUID,
+    batch_size: int = 5,
+    cookies_browser: str | None = None,
 ) -> tuple[Playlist, int, int, int]:
     playlist = db.get(Playlist, playlist_id)
     if playlist is None:
@@ -65,7 +68,9 @@ def download_missing_videos(
     output_dir = Path(playlist.folder_path)
     output_dir.mkdir(parents=True, exist_ok=True)
     output_template = str(output_dir / "%(upload_date)s %(title)s.%(ext)s")
-    requested_browser = cookies_browser if cookies_browser is not None else playlist.cookies_browser
+    requested_browser = (
+        cookies_browser if cookies_browser is not None else playlist.cookies_browser
+    )
     if not requested_browser:
         requested_browser = settings.default_cookies_browser
     resolved_browser = normalize_cookies_browser(requested_browser)
@@ -86,6 +91,7 @@ def download_missing_videos(
     )
     try:
         for index, video in enumerate(missing_videos, start=1):
+
             def handle_progress(
                 progress: str,
                 *,

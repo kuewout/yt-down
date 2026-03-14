@@ -7,4 +7,3 @@ class LibraryRescanResponse(BaseModel):
     relinked_videos: int
     missing_videos: int
     unchanged_videos: int
-
