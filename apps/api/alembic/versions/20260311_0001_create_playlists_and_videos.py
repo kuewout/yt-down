@@ -24,8 +24,18 @@ def upgrade() -> None:
         sa.Column("active", sa.Boolean(), server_default="true", nullable=False),
         sa.Column("last_checked_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("last_downloaded_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("source_url"),
     )
@@ -45,22 +55,45 @@ def upgrade() -> None:
         sa.Column("downloaded", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("download_error", sa.Text(), nullable=True),
         sa.Column("downloaded_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("last_seen_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "last_seen_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column(
             "metadata_json",
             postgresql.JSONB(astext_type=sa.Text()),
             server_default=sa.text("'{}'::jsonb"),
             nullable=False,
         ),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["playlist_id"], ["playlists.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("playlist_id", "video_id", name="uq_videos_playlist_video_id"),
+        sa.UniqueConstraint(
+            "playlist_id", "video_id", name="uq_videos_playlist_video_id"
+        ),
     )
-    op.create_index(op.f("ix_videos_downloaded"), "videos", ["downloaded"], unique=False)
-    op.create_index(op.f("ix_videos_last_seen_at"), "videos", ["last_seen_at"], unique=False)
-    op.create_index(op.f("ix_videos_upload_date"), "videos", ["upload_date"], unique=False)
+    op.create_index(
+        op.f("ix_videos_downloaded"), "videos", ["downloaded"], unique=False
+    )
+    op.create_index(
+        op.f("ix_videos_last_seen_at"), "videos", ["last_seen_at"], unique=False
+    )
+    op.create_index(
+        op.f("ix_videos_upload_date"), "videos", ["upload_date"], unique=False
+    )
 
 
 def downgrade() -> None:

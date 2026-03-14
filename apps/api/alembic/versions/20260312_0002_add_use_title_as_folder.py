@@ -13,7 +13,9 @@ depends_on = None
 def upgrade() -> None:
     op.add_column(
         "playlists",
-        sa.Column("use_title_as_folder", sa.Boolean(), nullable=False, server_default="true"),
+        sa.Column(
+            "use_title_as_folder", sa.Boolean(), nullable=False, server_default="true"
+        ),
     )
 
 

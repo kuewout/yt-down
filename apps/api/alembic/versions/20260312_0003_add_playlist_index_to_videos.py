@@ -32,7 +32,12 @@ def upgrade() -> None:
         WHERE videos.id = ranked.id
         """
     )
-    op.create_index(op.f("ix_videos_playlist_id_playlist_index"), "videos", ["playlist_id", "playlist_index"], unique=False)
+    op.create_index(
+        op.f("ix_videos_playlist_id_playlist_index"),
+        "videos",
+        ["playlist_id", "playlist_index"],
+        unique=False,
+    )
 
 
 def downgrade() -> None:
