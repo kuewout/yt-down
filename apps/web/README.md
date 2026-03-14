@@ -9,4 +9,4 @@ npm install
 npm run dev
 ```
 
-Set `VITE_API_BASE_URL` if the backend is not running at `http://localhost:8000/api`.
+Set `VITE_API_BASE_URL` if the backend is not running at `http://localhost:8001/api`.

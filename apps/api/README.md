@@ -5,7 +5,7 @@ Minimal FastAPI scaffold for the yt-down backend.
 ## Run
 
 ```bash
-uv run uvicorn app.main:app --reload --app-dir apps/api
+uv run uvicorn app.main:app --reload --app-dir apps/api --port 8001
 ```
 
 Run this from the repository root.

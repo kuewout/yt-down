@@ -111,7 +111,7 @@ export type LibraryRescanResponse = {
 };
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api";
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8001/api";
 
 export const ACTIVITY_STREAM_URL = `${API_BASE_URL}/activity/stream`;
 
