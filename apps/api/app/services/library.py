@@ -66,14 +66,18 @@ def rescan_library(db: Session) -> LibraryRescanResult:
 
 def relink_playlist_videos(db: Session, playlist: Playlist) -> LibraryRescanResult:
     playlist_files = _collect_playlist_files(Path(playlist.folder_path))
-    files_by_normalized_stem = _build_normalized_index(playlist_files)
+    files_by_normalized_stem, files_by_stripped_prefix_stem = _build_normalized_indexes(
+        playlist_files
+    )
     videos = db.scalars(select(Video).where(Video.playlist_id == playlist.id)).all()
     relinked_videos = 0
     missing_videos = 0
     unchanged_videos = 0
 
     for video in videos:
-        matched_path = _match_video_file(video, files_by_normalized_stem)
+        matched_path = _match_video_file(
+            video, files_by_normalized_stem, files_by_stripped_prefix_stem
+        )
         if matched_path is None:
             video.downloaded = False
             video.local_path = None
@@ -111,18 +115,31 @@ def _collect_playlist_files(folder_path: Path) -> list[Path]:
     return sorted(path for path in folder_path.rglob("*") if path.is_file())
 
 
-def _build_normalized_index(files: list[Path]) -> dict[str, list[Path]]:
+def _build_normalized_indexes(
+    files: list[Path],
+) -> tuple[dict[str, list[Path]], dict[str, list[Path]]]:
     index: dict[str, list[Path]] = {}
+    stripped_prefix_index: dict[str, list[Path]] = {}
     for path in files:
-        normalized = _normalize_name(path.stem)
+        stem = path.stem
+        normalized = _normalize_name(stem)
         if not normalized:
             continue
         index.setdefault(normalized, []).append(path)
-    return index
+
+        stripped = _strip_leading_date_prefix(stem)
+        if stripped is None:
+            continue
+        stripped_normalized = _normalize_name(stripped)
+        if stripped_normalized:
+            stripped_prefix_index.setdefault(stripped_normalized, []).append(path)
+    return index, stripped_prefix_index
 
 
 def _match_video_file(
-    video: Video, files_by_normalized_stem: dict[str, list[Path]]
+    video: Video,
+    files_by_normalized_stem: dict[str, list[Path]],
+    files_by_stripped_prefix_stem: dict[str, list[Path]],
 ) -> Path | None:
     normalized_stem = _normalize_name(_expected_stem(video))
     if not normalized_stem:
@@ -131,6 +148,13 @@ def _match_video_file(
     candidates = files_by_normalized_stem.get(normalized_stem, [])
     if len(candidates) == 1:
         return candidates[0]
+    if len(candidates) > 1:
+        return None
+
+    # Fallback for files named like "YYYYMMDD <title>".
+    stripped_prefix_candidates = files_by_stripped_prefix_stem.get(normalized_stem, [])
+    if len(stripped_prefix_candidates) == 1:
+        return stripped_prefix_candidates[0]
 
     return None
 
@@ -143,6 +167,13 @@ def _expected_stem(video: Video) -> str:
 
 def _normalize_name(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", value.casefold())
+
+
+def _strip_leading_date_prefix(value: str) -> str | None:
+    match = re.match(r"^\s*(\d{8})\s+(.+)$", value)
+    if not match:
+        return None
+    return match.group(2).strip()
 
 
 def _paths_equal(left: str, right: str) -> bool:
