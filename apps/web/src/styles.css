@@ -1078,9 +1078,19 @@ a {
   flex: 1 1 150px;
 }
 
+.detail-header-controls {
+  display: grid;
+  gap: 10px;
+  min-width: min(100%, 420px);
+}
+
+.detail-tab-row {
+  justify-content: flex-end;
+}
+
 .download-batch-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(180px, 240px)) minmax(0, 1fr);
+  grid-template-columns: minmax(180px, 240px);
   gap: 14px;
   align-items: end;
 }
@@ -1389,6 +1399,7 @@ a {
 
   .playlist-card-shell,
   .detail-hero,
+  .detail-header-controls,
   .selected-summary {
     grid-template-columns: 1fr;
   }

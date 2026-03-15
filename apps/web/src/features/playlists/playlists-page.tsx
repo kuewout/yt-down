@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { Dispatch, FormEvent, SetStateAction, useEffect, useState } from "react";
 
 import { ActivityResponse } from "../../api/client";
 import {
@@ -214,15 +214,6 @@ function getVideoStatusLabel(video: {
   return "Missing";
 }
 
-function SyncIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M20 12a8 8 0 1 1-2.34-5.66" />
-      <path d="M20 4v6h-6" />
-    </svg>
-  );
-}
-
 export function PlaylistsPage() {
   const { data, isLoading, isError, error } = usePlaylists();
   const cookieBrowsers = useCookieBrowsers();
@@ -243,7 +234,6 @@ export function PlaylistsPage() {
   const [playlistFilter, setPlaylistFilter] = useState<PlaylistFilter>("active");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [downloadBatchSize, setDownloadBatchSize] = useState("5");
-  const [downloadBrowser, setDownloadBrowser] = useState("firefox");
   const selectedVideos = usePlaylistVideos(selectedPlaylistId);
   const selectedPlaylist = data?.items.find((playlist) => playlist.id === selectedPlaylistId) ?? null;
   const playlistCount = data?.items.length ?? 0;
@@ -304,7 +294,6 @@ export function PlaylistsPage() {
   useEffect(() => {
     if (!selectedPlaylist) {
       setEditForm(initialFormState);
-      setDownloadBrowser(preferredBrowser);
       return;
     }
 
@@ -317,7 +306,6 @@ export function PlaylistsPage() {
       cookies_browser: nextBrowser,
       resolution_limit: selectedPlaylist.resolution_limit?.toString() ?? "",
     });
-    setDownloadBrowser(nextBrowser);
   }, [preferredBrowser, selectedPlaylist]);
 
   useEffect(() => {
@@ -332,7 +320,6 @@ export function PlaylistsPage() {
     setEditForm((current) =>
       supportedValues.has(current.cookies_browser) ? current : { ...current, cookies_browser: preferredBrowser },
     );
-    setDownloadBrowser((current) => (supportedValues.has(current) ? current : preferredBrowser));
   }, [cookieBrowsers.isSuccess, preferredBrowser, supportedBrowserKey]);
 
   useEffect(() => {
@@ -379,13 +366,20 @@ export function PlaylistsPage() {
     setEditForm((current) => ({ ...current, [field]: value }));
   }
 
+  function updateTitleAndFolder(
+    updater: Dispatch<SetStateAction<FormState>>,
+    title: string,
+  ) {
+    updater((current) => ({ ...current, title, folder_name: title }));
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const created = await createPlaylist.mutateAsync({
       source_url: form.source_url.trim(),
       title: form.title.trim(),
-      folder_name: form.folder_name.trim(),
+      folder_name: form.title.trim(),
       folder_path: form.folder_path.trim() || undefined,
       cookies_browser: form.cookies_browser.trim() || preferredBrowser,
       resolution_limit: form.resolution_limit ? Number(form.resolution_limit) : null,
@@ -409,7 +403,7 @@ export function PlaylistsPage() {
       playlistId: selectedPlaylistId,
       input: {
         title: editForm.title.trim(),
-        folder_name: editForm.folder_name.trim(),
+        folder_name: editForm.title.trim(),
         folder_path: editForm.folder_path.trim() || undefined,
         cookies_browser: editForm.cookies_browser.trim() || preferredBrowser,
         resolution_limit: editForm.resolution_limit ? Number(editForm.resolution_limit) : null,
@@ -546,24 +540,15 @@ export function PlaylistsPage() {
             </article>
           </div>
 
-          <div className="filter-row" role="tablist" aria-label="Playlist status views">
+          <div className="filter-row">
             <button
-              className={`filter-chip ${playlistFilter === "active" ? "active" : ""}`}
+              className="filter-chip active"
               type="button"
-              role="tab"
-              aria-selected={playlistFilter === "active"}
-              onClick={() => setPlaylistFilter("active")}
+              onClick={() =>
+                setPlaylistFilter((current) => (current === "active" ? "inactive" : "active"))
+              }
             >
-              Active
-            </button>
-            <button
-              className={`filter-chip ${playlistFilter === "inactive" ? "active" : ""}`}
-              type="button"
-              role="tab"
-              aria-selected={playlistFilter === "inactive"}
-              onClick={() => setPlaylistFilter("inactive")}
-            >
-              Inactive
+              {playlistFilter === "active" ? "Showing Active" : "Showing Inactive"}
             </button>
           </div>
 
@@ -649,23 +634,6 @@ export function PlaylistsPage() {
                           </p>
                         </div>
                       </button>
-                      <div className="card-actions card-actions-compact">
-                        <button
-                          className="icon-action-button"
-                          type="button"
-                          disabled={syncPlaylist.isPending}
-                          aria-label={`Sync ${playlist.title}`}
-                          title={syncPlaylist.isPending && selectedPlaylistId === playlist.id ? "Syncing..." : "Sync"}
-                          onClick={() => {
-                            setSelectedPlaylistId(playlist.id);
-                            setActiveTab("overview");
-                            syncPlaylist.mutate(playlist.id);
-                          }}
-                        >
-                          <SyncIcon />
-                        </button>
-                        {!playlist.active && <span className="view-only-note">View only</span>}
-                      </div>
                     </div>
                   </article>
                 );
@@ -726,39 +694,51 @@ export function PlaylistsPage() {
                     </div>
                     <div className="detail-tag-row">
                       <span className="pill">{selectedPlaylist.resolution_limit ? `${selectedPlaylist.resolution_limit}p` : "Best"}</span>
-                      <span className="pill detail-pill-muted">{selectedVideos.data?.items.length ?? 0} videos</span>
-                      <span className="pill detail-pill-muted">{downloadedCount} downloaded</span>
+                      <span className="pill detail-pill-muted">{downloadedCount}/{selectedVideos.data?.items.length ?? 0}</span>
                     </div>
                   </div>
 
-                  <div className="detail-actions">
-                    <button
-                      className="primary-button"
-                      type="button"
-                      disabled={syncPlaylist.isPending}
-                      onClick={() => syncPlaylist.mutate(selectedPlaylist.id)}
-                    >
-                      {syncPlaylist.isPending ? "Syncing..." : "Sync"}
-                    </button>
-                    {selectedPlaylist.active && (
+                  <div className="detail-header-controls">
+                    <div className="detail-actions">
                       <button
-                        className="secondary-button"
+                        className="primary-button"
                         type="button"
-                        disabled={downloadNewVideos.isPending}
-                        onClick={() =>
-                          downloadNewVideos.mutate({
-                            playlistId: selectedPlaylist.id,
-                            batchSize: Number(downloadBatchSize),
-                            cookiesBrowser: downloadBrowser || preferredBrowser,
-                          })
-                        }
+                        disabled={syncPlaylist.isPending}
+                        onClick={() => syncPlaylist.mutate(selectedPlaylist.id)}
                       >
-                        {downloadNewVideos.isPending ? "Downloading..." : "Download"}
+                        {syncPlaylist.isPending ? "Syncing..." : "Sync"}
                       </button>
-                    )}
-                    <button className="secondary-button" type="button" onClick={() => setActiveTab("settings")}>
-                      Settings
-                    </button>
+                      {selectedPlaylist.active && (
+                        <button
+                          className="secondary-button"
+                          type="button"
+                          disabled={downloadNewVideos.isPending}
+                          onClick={() =>
+                            downloadNewVideos.mutate({
+                              playlistId: selectedPlaylist.id,
+                              batchSize: Number(downloadBatchSize),
+                              cookiesBrowser: editForm.cookies_browser || preferredBrowser,
+                            })
+                          }
+                        >
+                          {downloadNewVideos.isPending ? "Downloading..." : "Download"}
+                        </button>
+                      )}
+                    </div>
+                    <div className="tab-row detail-tab-row" role="tablist" aria-label="Playlist detail sections">
+                      {detailTabs.map((tab) => (
+                        <button
+                          key={tab.key}
+                          className={`tab-button ${activeTab === tab.key ? "active" : ""}`}
+                          type="button"
+                          role="tab"
+                          aria-selected={activeTab === tab.key}
+                          onClick={() => setActiveTab(tab.key)}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -805,16 +785,6 @@ export function PlaylistsPage() {
                             ))}
                           </select>
                         </label>
-                        <label>
-                          Browser for `yt-dlp`
-                          <select value={downloadBrowser} onChange={(event) => setDownloadBrowser(event.target.value)}>
-                            {browserOptions.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
                       </div>
                     </section>
                   ) : (
@@ -827,21 +797,6 @@ export function PlaylistsPage() {
                   Installed but not exposed by `yt-dlp`: {cookieBrowsers.data.unsupported_installed.join(", ")}.
                 </p>
               ) : null}
-
-              <div className="tab-row" role="tablist" aria-label="Playlist detail sections">
-                {detailTabs.map((tab) => (
-                  <button
-                    key={tab.key}
-                    className={`tab-button ${activeTab === tab.key ? "active" : ""}`}
-                    type="button"
-                    role="tab"
-                    aria-selected={activeTab === tab.key}
-                    onClick={() => setActiveTab(tab.key)}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
 
               {activeTab === "overview" && (
                 <div className="detail-stack">
@@ -907,14 +862,7 @@ export function PlaylistsPage() {
               {activeTab === "settings" && (
                 <form className="playlist-form compact-form tab-panel" onSubmit={handleUpdateSelectedPlaylist}>
                   <div className="status-toggle-row">
-                    <div>
-                      <span className="status-label">Status</span>
-                      <p className="card-meta">
-                        {selectedPlaylist.active
-                          ? "Active playlists can sync and download."
-                          : "Inactive playlists remain visible in the inactive view and can sync only."}
-                      </p>
-                    </div>
+                    <span className="status-label">Status: {selectedPlaylist.active ? "Active" : "Inactive"}</span>
                     <button
                       className="secondary-button"
                       type="button"
@@ -934,15 +882,7 @@ export function PlaylistsPage() {
                       <input
                         disabled={!selectedPlaylist.active}
                         value={editForm.title}
-                        onChange={(event) => updateEditField("title", event.target.value)}
-                      />
-                    </label>
-                    <label>
-                      Folder name
-                      <input
-                        disabled={!selectedPlaylist.active}
-                        value={editForm.folder_name}
-                        onChange={(event) => updateEditField("folder_name", event.target.value)}
+                        onChange={(event) => updateTitleAndFolder(setEditForm, event.target.value)}
                       />
                     </label>
                     <label className="field-span-full">
@@ -1078,19 +1018,11 @@ export function PlaylistsPage() {
                   />
                 </label>
                 <label>
-                  Display title
+                  Title
                   <input
                     placeholder="Optional before first sync"
                     value={form.title}
-                    onChange={(event) => updateField("title", event.target.value)}
-                  />
-                </label>
-                <label>
-                  Folder name
-                  <input
-                    placeholder="Optional, derived from playlist title"
-                    value={form.folder_name}
-                    onChange={(event) => updateField("folder_name", event.target.value)}
+                    onChange={(event) => updateTitleAndFolder(setForm, event.target.value)}
                   />
                 </label>
                 <label className="field-span-full">
