@@ -1127,6 +1127,16 @@ a {
   margin: 6px 0 0;
 }
 
+.folder-path-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.folder-path-row input {
+  flex: 1 1 auto;
+}
+
 .tab-row {
   display: flex;
   gap: 10px;
@@ -1448,5 +1458,10 @@ a {
     left: 12px;
     bottom: 12px;
     width: auto;
+  }
+
+  .folder-path-row {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

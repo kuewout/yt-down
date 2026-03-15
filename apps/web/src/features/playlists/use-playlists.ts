@@ -11,6 +11,7 @@ import {
   fetchPlaylists,
   fetchVideos,
   openPlaylistFolder,
+  pickPlaylistFolder,
   rescanLibrary,
   syncPlaylist,
   type ActivityResponse,
@@ -198,5 +199,11 @@ export function useRescanLibrary() {
 export function useOpenPlaylistFolder() {
   return useMutation({
     mutationFn: (playlistId: string) => openPlaylistFolder(playlistId),
+  });
+}
+
+export function usePickPlaylistFolder() {
+  return useMutation({
+    mutationFn: (playlistId: string) => pickPlaylistFolder(playlistId),
   });
 }

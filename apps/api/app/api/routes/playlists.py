@@ -17,6 +17,7 @@ from app.schemas import (
     PlaylistUpdate,
 )
 from app.services.downloads import download_missing_videos
+from app.services.folder_picker import FolderPickerError, pick_directory
 from app.services.playlists import (
     YtDlpError,
     build_folder_path,
@@ -46,6 +47,10 @@ class BrowserOptionResponse(BaseModel):
 class CookieBrowserAvailabilityResponse(BaseModel):
     options: list[BrowserOptionResponse]
     unsupported_installed: list[str]
+
+
+class PickFolderResponse(BaseModel):
+    selected_path: str | None
 
 
 @router.get("", response_model=PlaylistListResponse)
@@ -273,6 +278,32 @@ def open_playlist_folder(playlist_id: UUID, db: Session = Depends(get_db)) -> Re
         ) from exc
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/{playlist_id}/pick-folder", response_model=PickFolderResponse)
+def pick_playlist_folder(
+    playlist_id: UUID, db: Session = Depends(get_db)
+) -> PickFolderResponse:
+    playlist = db.get(Playlist, playlist_id)
+    if playlist is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Playlist not found"
+        )
+
+    initial_path = (
+        str(Path(playlist.folder_path).expanduser().resolve())
+        if playlist.folder_path
+        else None
+    )
+    try:
+        selected_path = pick_directory(initial_path=initial_path)
+    except FolderPickerError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
+
+    return PickFolderResponse(selected_path=selected_path)
 
 
 @router.delete("/{playlist_id}", status_code=status.HTTP_204_NO_CONTENT)

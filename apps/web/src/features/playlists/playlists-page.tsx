@@ -9,6 +9,7 @@ import {
   useDownloadNewVideos,
   usePlaylistVideos,
   usePlaylists,
+  usePickPlaylistFolder,
   useOpenPlaylistFolder,
   useRescanLibrary,
   useSyncPlaylist,
@@ -231,6 +232,7 @@ export function PlaylistsPage() {
   const syncPlaylist = useSyncPlaylist();
   const downloadNewVideos = useDownloadNewVideos();
   const openPlaylistFolder = useOpenPlaylistFolder();
+  const pickPlaylistFolder = usePickPlaylistFolder();
   const rescanLibrary = useRescanLibrary();
   const updatePlaylist = useUpdatePlaylist();
   const deletePlaylist = useDeletePlaylist();
@@ -438,6 +440,17 @@ export function PlaylistsPage() {
       },
     });
     setPlaylistFilter(selectedPlaylist.active ? "inactive" : "active");
+  }
+
+  async function handlePickFolderPath() {
+    if (!selectedPlaylistId) {
+      return;
+    }
+
+    const result = await pickPlaylistFolder.mutateAsync(selectedPlaylistId);
+    if (result.selected_path) {
+      updateEditField("folder_path", result.selected_path);
+    }
   }
 
   return (
@@ -925,11 +938,21 @@ export function PlaylistsPage() {
                     </label>
                     <label className="field-span-full">
                       Folder path
-                      <input
-                        disabled={!selectedPlaylist.active}
-                        value={editForm.folder_path}
-                        onChange={(event) => updateEditField("folder_path", event.target.value)}
-                      />
+                      <div className="folder-path-row">
+                        <input
+                          disabled={!selectedPlaylist.active}
+                          value={editForm.folder_path}
+                          onChange={(event) => updateEditField("folder_path", event.target.value)}
+                        />
+                        <button
+                          className="secondary-button"
+                          type="button"
+                          disabled={!selectedPlaylist.active || pickPlaylistFolder.isPending}
+                          onClick={handlePickFolderPath}
+                        >
+                          {pickPlaylistFolder.isPending ? "Choosing..." : "Choose folder"}
+                        </button>
+                      </div>
                     </label>
                     <label>
                       Cookies browser
@@ -980,6 +1003,12 @@ export function PlaylistsPage() {
                     <p className="error-text">
                       Failed to update playlist:{" "}
                       {updatePlaylist.error instanceof Error ? updatePlaylist.error.message : "Unknown error"}
+                    </p>
+                  )}
+                  {pickPlaylistFolder.isError && (
+                    <p className="error-text">
+                      Failed to open folder picker:{" "}
+                      {pickPlaylistFolder.error instanceof Error ? pickPlaylistFolder.error.message : "Unknown error"}
                     </p>
                   )}
                   {deletePlaylist.isError && (

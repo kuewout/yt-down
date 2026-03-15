@@ -110,6 +110,10 @@ export type LibraryRescanResponse = {
   unchanged_videos: number;
 };
 
+export type PickPlaylistFolderResponse = {
+  selected_path: string | null;
+};
+
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8001/api";
 
@@ -211,6 +215,12 @@ export async function deletePlaylist(playlistId: string): Promise<void> {
 
 export async function openPlaylistFolder(playlistId: string): Promise<void> {
   await request<void>(`/playlists/${playlistId}/open-folder`, {
+    method: "POST",
+  });
+}
+
+export async function pickPlaylistFolder(playlistId: string): Promise<PickPlaylistFolderResponse> {
+  return request<PickPlaylistFolderResponse>(`/playlists/${playlistId}/pick-folder`, {
     method: "POST",
   });
 }
