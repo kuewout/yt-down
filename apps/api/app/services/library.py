@@ -73,29 +73,27 @@ def relink_playlist_videos(db: Session, playlist: Playlist) -> LibraryRescanResu
     unchanged_videos = 0
 
     for video in videos:
-        current_path = Path(video.local_path) if video.local_path else None
-        if current_path and current_path.is_file():
-            resolved_path = str(current_path.resolve())
-            if video.local_path != resolved_path:
-                video.local_path = resolved_path
-            video.downloaded = True
-            video.download_error = None
-            unchanged_videos += 1
-            continue
-
-        if video.local_path:
-            video.local_path = None
-
         matched_path = _match_video_file(video, files_by_normalized_stem)
         if matched_path is None:
             video.downloaded = False
+            video.local_path = None
             missing_videos += 1
             continue
 
-        video.local_path = str(matched_path.resolve())
+        resolved_match = str(matched_path.resolve())
+        is_unchanged = (
+            bool(video.local_path)
+            and video.downloaded
+            and video.download_error is None
+            and _paths_equal(video.local_path, resolved_match)
+        )
+        video.local_path = resolved_match
         video.downloaded = True
         video.download_error = None
-        relinked_videos += 1
+        if is_unchanged:
+            unchanged_videos += 1
+        else:
+            relinked_videos += 1
 
     return LibraryRescanResult(
         playlists_scanned=1,
@@ -145,3 +143,7 @@ def _expected_stem(video: Video) -> str:
 
 def _normalize_name(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", value.casefold())
+
+
+def _paths_equal(left: str, right: str) -> bool:
+    return Path(left).expanduser().resolve() == Path(right).expanduser().resolve()
