@@ -100,6 +100,18 @@ function toPlaylistUrl(sourceUrl: string): string {
   return sourceUrl;
 }
 
+function shortenInlineText(value: string, maxLength: number): string {
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  if (maxLength <= 3) {
+    return value.slice(0, maxLength);
+  }
+
+  return `${value.slice(0, maxLength - 3)}...`;
+}
+
 function openExternalUrl(url: string) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
@@ -236,6 +248,7 @@ export function PlaylistsPage() {
   const [downloadBrowser, setDownloadBrowser] = useState("chrome");
   const selectedVideos = usePlaylistVideos(selectedPlaylistId);
   const selectedPlaylist = data?.items.find((playlist) => playlist.id === selectedPlaylistId) ?? null;
+  const selectedPlaylistSourceUrl = selectedPlaylist ? toPlaylistUrl(selectedPlaylist.source_url) : "";
   const playlistCount = data?.items.length ?? 0;
   const activePlaylistCount = data?.items.filter((playlist) => playlist.active).length ?? 0;
   const inactivePlaylistCount = playlistCount - activePlaylistCount;
@@ -753,8 +766,12 @@ export function PlaylistsPage() {
                 <div className="detail-side-stack">
                   <div className="selected-summary detail-summary">
                     <article className="selected-summary-card">
-                      <span className="status-label">Folder</span>
-                      <p className="card-meta">{selectedPlaylist.folder_path}</p>
+                      <div className="summary-inline-row">
+                        <span className="status-label">Folder</span>
+                        <p className="card-meta summary-inline-value" title={selectedPlaylist.folder_path}>
+                          {shortenInlineText(selectedPlaylist.folder_path, 72)}
+                        </p>
+                      </div>
                       <button
                         className="secondary-button summary-action-button"
                         type="button"
@@ -765,12 +782,16 @@ export function PlaylistsPage() {
                       </button>
                     </article>
                     <article className="selected-summary-card">
-                      <span className="status-label">Source</span>
-                      <p className="card-link">{toPlaylistUrl(selectedPlaylist.source_url)}</p>
+                      <div className="summary-inline-row">
+                        <span className="status-label">Source</span>
+                        <p className="card-link summary-inline-value" title={selectedPlaylistSourceUrl}>
+                          {shortenInlineText(selectedPlaylistSourceUrl, 72)}
+                        </p>
+                      </div>
                       <button
                         className="secondary-button summary-action-button"
                         type="button"
-                        onClick={() => openExternalUrl(toPlaylistUrl(selectedPlaylist.source_url))}
+                        onClick={() => openExternalUrl(selectedPlaylistSourceUrl)}
                       >
                         Open on Youtube
                       </button>

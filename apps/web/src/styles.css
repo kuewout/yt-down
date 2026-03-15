@@ -992,6 +992,22 @@ a {
   background: rgba(255, 255, 255, 0.6);
 }
 
+.summary-inline-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.summary-inline-value {
+  min-width: 0;
+  flex: 1 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .status-chip {
   display: inline-flex;
   align-items: center;
