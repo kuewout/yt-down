@@ -80,9 +80,14 @@ class BrowserAvailability:
 
 def _build_format_selector(resolution_limit: int | None) -> str:
     if resolution_limit:
-        return f"bestvideo*[height<={resolution_limit}]+bestaudio/best[height<={resolution_limit}]/best"
+        return (
+            f"bestvideo*[ext=mp4][height<={resolution_limit}]+bestaudio[ext=m4a]"
+            f"/bestvideo*[height<={resolution_limit}]+bestaudio"
+            f"/best[ext=mp4][height<={resolution_limit}]"
+            f"/best[height<={resolution_limit}]"
+        )
 
-    return "bestvideo*+bestaudio/best"
+    return "bestvideo*[ext=mp4]+bestaudio[ext=m4a]/bestvideo*+bestaudio/best[ext=mp4]/best"
 
 
 def _supported_browser_labels() -> dict[str, str]:
@@ -267,6 +272,8 @@ def download_video(
         "before_dl:YT_DOWN_UPLOAD_DATE:%(upload_date)s",
         "--print",
         "after_move:YT_DOWN_FILEPATH:%(filepath)s",
+        "--merge-output-format",
+        "mp4",
         "-f",
         _build_format_selector(resolution_limit),
         "-o",
@@ -284,6 +291,8 @@ def download_video(
                     "after_move:YT_DOWN_FILEPATH:%(filepath)s",
                     "--cookies-from-browser",
                     cookies_browser,
+                    "--merge-output-format",
+                    "mp4",
                 ]
                 + [
                     "-f",

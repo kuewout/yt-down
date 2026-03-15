@@ -288,10 +288,11 @@ fi
 
 # Add format selection
 if [[ -z "$max_height" ]]; then
-    yt_dlp_cmd+=(-f "bestvideo+bestaudio/best")
+    yt_dlp_cmd+=(-f "bestvideo*[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[ext=mp4]/best")
 else
-    yt_dlp_cmd+=(-f "best[height<=$max_height]")
+    yt_dlp_cmd+=(-f "bestvideo*[ext=mp4][height<=$max_height]+bestaudio[ext=m4a]/bestvideo*[height<=$max_height]+bestaudio/best[ext=mp4][height<=$max_height]/best[height<=$max_height]")
 fi
+yt_dlp_cmd+=(--merge-output-format mp4)
 
 # Add playlist start index if downloading playlist
 if [[ "$download_mode" == "playlist" ]] && (( playlist_start > 1 )); then
