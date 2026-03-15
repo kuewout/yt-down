@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from dataclasses import dataclass
 from pathlib import Path
 import re
 import shutil
@@ -12,6 +13,15 @@ from app.models import Playlist, Video
 from app.services.activity import activity_registry
 from app.services.library import relink_playlist_videos
 from app.services.ytdlp import PlaylistSnapshot, YtDlpError, fetch_flat_playlist
+
+
+@dataclass
+class SyncPlaylistResult:
+    playlist: Playlist
+    created_count: int
+    total_videos: int
+    matched_local_videos: int
+    unmatched_local_files: list[str]
 
 
 def build_folder_path(folder_name: str) -> str:
@@ -124,7 +134,7 @@ def apply_title_folder_name(db: Session, playlist: Playlist, title: str) -> None
     playlist.folder_path = target_folder_path
 
 
-def sync_playlist(db: Session, playlist_id: UUID) -> tuple[Playlist, int]:
+def sync_playlist(db: Session, playlist_id: UUID) -> SyncPlaylistResult:
     playlist = db.get(Playlist, playlist_id)
     if playlist is None:
         raise ValueError("Playlist not found")
@@ -156,15 +166,29 @@ def sync_playlist(db: Session, playlist_id: UUID) -> tuple[Playlist, int]:
         created_count = _upsert_playlist_entries(db, playlist, snapshot)
         db.commit()
         db.refresh(playlist)
+        total_videos = len(list_playlist_videos(db, playlist.id))
     except Exception as exc:
         activity_registry.fail(str(exc))
         raise
 
+    unmatched_display = ", ".join(relink_result.unmatched_local_files)
+    if not unmatched_display:
+        unmatched_display = "none"
     activity_registry.complete(
-        message=f"Synced {playlist.title}: {created_count} new videos",
+        message=(
+            f"Synced {playlist.title}: {created_count} new / {total_videos} total, "
+            f"local matched {relink_result.matched_local_videos}/{relink_result.files_scanned}, "
+            f"unmatched local files: {unmatched_display}"
+        ),
         items_completed=len(snapshot.entries),
     )
-    return playlist, created_count
+    return SyncPlaylistResult(
+        playlist=playlist,
+        created_count=created_count,
+        total_videos=total_videos,
+        matched_local_videos=relink_result.matched_local_videos,
+        unmatched_local_files=relink_result.unmatched_local_files,
+    )
 
 
 def _upsert_playlist_entries(

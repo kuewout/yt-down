@@ -92,6 +92,8 @@ export type SyncPlaylistResponse = {
   title: string;
   new_videos: number;
   total_videos: number;
+  matched_local_videos: number;
+  unmatched_local_files: string[];
 };
 
 export type DownloadNewResponse = {

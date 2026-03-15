@@ -685,9 +685,18 @@ export function PlaylistsPage() {
             </p>
           )}
           {syncPlaylist.data && (
-            <p className="hint">
-              Synced {syncPlaylist.data.title}: {syncPlaylist.data.new_videos} new / {syncPlaylist.data.total_videos} total
-            </p>
+            <div className="hint">
+              <p>
+                Synced {syncPlaylist.data.title}: {syncPlaylist.data.new_videos} new / {syncPlaylist.data.total_videos} total,
+                local matched {syncPlaylist.data.matched_local_videos}.
+              </p>
+              <p>
+                Unmatched local files:{" "}
+                {syncPlaylist.data.unmatched_local_files.length > 0
+                  ? syncPlaylist.data.unmatched_local_files.join(", ")
+                  : "none"}
+              </p>
+            </div>
           )}
           {downloadNewVideos.isError && (
             <p className="error-text">

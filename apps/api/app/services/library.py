@@ -9,6 +9,21 @@ from app.models import Playlist, Video
 from app.services.activity import activity_registry
 
 
+VIDEO_FILE_EXTENSIONS = {
+    ".3gp",
+    ".avi",
+    ".flv",
+    ".m4v",
+    ".mkv",
+    ".mov",
+    ".mp4",
+    ".mpeg",
+    ".mpg",
+    ".webm",
+    ".wmv",
+}
+
+
 @dataclass
 class LibraryRescanResult:
     playlists_scanned: int
@@ -16,6 +31,11 @@ class LibraryRescanResult:
     relinked_videos: int
     missing_videos: int
     unchanged_videos: int
+    unmatched_local_files: list[str]
+
+    @property
+    def matched_local_videos(self) -> int:
+        return self.relinked_videos + self.unchanged_videos
 
 
 def rescan_library(db: Session) -> LibraryRescanResult:
@@ -61,6 +81,7 @@ def rescan_library(db: Session) -> LibraryRescanResult:
         relinked_videos=relinked_videos,
         missing_videos=missing_videos,
         unchanged_videos=unchanged_videos,
+        unmatched_local_files=[],
     )
 
 
@@ -73,6 +94,7 @@ def relink_playlist_videos(db: Session, playlist: Playlist) -> LibraryRescanResu
     relinked_videos = 0
     missing_videos = 0
     unchanged_videos = 0
+    matched_local_paths: set[Path] = set()
 
     for video in videos:
         matched_path = _match_video_file(
@@ -94,10 +116,15 @@ def relink_playlist_videos(db: Session, playlist: Playlist) -> LibraryRescanResu
         video.local_path = resolved_match
         video.downloaded = True
         video.download_error = None
+        matched_local_paths.add(matched_path.resolve())
         if is_unchanged:
             unchanged_videos += 1
         else:
             relinked_videos += 1
+
+    unmatched_local_files = sorted(
+        path.name for path in playlist_files if path.resolve() not in matched_local_paths
+    )
 
     return LibraryRescanResult(
         playlists_scanned=1,
@@ -105,6 +132,7 @@ def relink_playlist_videos(db: Session, playlist: Playlist) -> LibraryRescanResu
         relinked_videos=relinked_videos,
         missing_videos=missing_videos,
         unchanged_videos=unchanged_videos,
+        unmatched_local_files=unmatched_local_files,
     )
 
 
@@ -112,7 +140,11 @@ def _collect_playlist_files(folder_path: Path) -> list[Path]:
     if not folder_path.exists() or not folder_path.is_dir():
         return []
 
-    return sorted(path for path in folder_path.rglob("*") if path.is_file())
+    return sorted(
+        path
+        for path in folder_path.rglob("*")
+        if path.is_file() and path.suffix.casefold() in VIDEO_FILE_EXTENSIONS
+    )
 
 
 def _build_normalized_indexes(

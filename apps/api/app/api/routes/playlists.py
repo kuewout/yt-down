@@ -186,9 +186,9 @@ def get_playlist_videos(
 @router.post("/{playlist_id}/sync")
 def sync_playlist_route(
     playlist_id: UUID, db: Session = Depends(get_db)
-) -> dict[str, str | int]:
+) -> dict[str, str | int | list[str]]:
     try:
-        playlist, created_count = sync_playlist(db, playlist_id)
+        result = sync_playlist(db, playlist_id)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
@@ -200,10 +200,12 @@ def sync_playlist_route(
         ) from exc
 
     return {
-        "playlist_id": str(playlist.id),
-        "title": playlist.title,
-        "new_videos": created_count,
-        "total_videos": len(list_playlist_videos(db, playlist.id)),
+        "playlist_id": str(result.playlist.id),
+        "title": result.playlist.title,
+        "new_videos": result.created_count,
+        "total_videos": result.total_videos,
+        "matched_local_videos": result.matched_local_videos,
+        "unmatched_local_files": result.unmatched_local_files,
     }
 
 
