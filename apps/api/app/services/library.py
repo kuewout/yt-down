@@ -198,7 +198,7 @@ def _expected_stem(video: Video) -> str:
 
 
 def _normalize_name(value: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "", value.casefold())
+    return "".join(character.casefold() for character in value if character.isalnum())
 
 
 def _strip_leading_date_prefix(value: str) -> str | None:

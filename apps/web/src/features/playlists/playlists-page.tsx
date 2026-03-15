@@ -690,12 +690,12 @@ export function PlaylistsPage() {
                 Synced {syncPlaylist.data.title}: {syncPlaylist.data.new_videos} new / {syncPlaylist.data.total_videos} total,
                 local matched {syncPlaylist.data.matched_local_videos}.
               </p>
-              <p>
-                Unmatched local files:{" "}
-                {syncPlaylist.data.unmatched_local_files.length > 0
-                  ? syncPlaylist.data.unmatched_local_files.join(", ")
-                  : "none"}
-              </p>
+              {syncPlaylist.data.unmatched_local_files.length > 0 && (
+                <>
+                  <p>Unmatched local files:</p>
+                <pre className="hint">{syncPlaylist.data.unmatched_local_files.join("\n")}</pre>
+                </>
+              )}
             </div>
           )}
           {downloadNewVideos.isError && (
