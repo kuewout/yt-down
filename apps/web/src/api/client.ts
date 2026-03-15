@@ -28,7 +28,6 @@ export type Playlist = {
   folder_name: string;
   folder_path: string;
   use_title_as_folder: boolean;
-  cookies_browser: string | null;
   resolution_limit: number | null;
   active: boolean;
   last_checked_at: string | null;
@@ -69,7 +68,6 @@ export type CreatePlaylistInput = {
   title: string;
   folder_name: string;
   folder_path?: string;
-  cookies_browser: string | null;
   resolution_limit: number | null;
   active: boolean;
   playlist_id?: string | null;

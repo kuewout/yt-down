@@ -22,7 +22,6 @@ type FormState = {
   title: string;
   folder_name: string;
   folder_path: string;
-  cookies_browser: string;
   resolution_limit: string;
 };
 
@@ -43,7 +42,6 @@ const initialFormState: FormState = {
   title: "",
   folder_name: "",
   folder_path: "",
-  cookies_browser: "firefox",
   resolution_limit: "720",
 };
 
@@ -172,14 +170,6 @@ function buildActivityLine(activity: ActivityResponse): string {
   return parts.join("  ") || "Waiting for updates";
 }
 
-function defaultBrowserValue(options: Array<{ value: string }>): string {
-  if (options.some((option) => option.value === "firefox")) {
-    return "firefox";
-  }
-
-  return options[0]?.value ?? "firefox";
-}
-
 function defaultDownloadBrowserValue(options: Array<{ value: string }>): string {
   if (options.some((option) => option.value === "chrome")) {
     return "chrome";
@@ -261,7 +251,6 @@ export function PlaylistsPage() {
   const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([]);
   const [isActivityExpanded, setIsActivityExpanded] = useState(false);
   const browserOptions = cookieBrowsers.data?.options ?? [];
-  const preferredBrowser = defaultBrowserValue(browserOptions);
   const preferredDownloadBrowser = defaultDownloadBrowserValue(browserOptions);
   const supportedBrowserValues = browserOptions.map((option) => option.value);
   const supportedBrowserKey = supportedBrowserValues.join("|");
@@ -312,16 +301,14 @@ export function PlaylistsPage() {
       return;
     }
 
-    const nextBrowser = selectedPlaylist.cookies_browser ?? preferredBrowser;
     setEditForm({
       source_url: selectedPlaylist.source_url,
       title: selectedPlaylist.title,
       folder_name: selectedPlaylist.folder_name,
       folder_path: selectedPlaylist.folder_path,
-      cookies_browser: nextBrowser,
       resolution_limit: selectedPlaylist.resolution_limit?.toString() ?? "",
     });
-  }, [preferredBrowser, selectedPlaylist]);
+  }, [selectedPlaylist]);
 
   useEffect(() => {
     if (!cookieBrowsers.isSuccess) {
@@ -329,14 +316,8 @@ export function PlaylistsPage() {
     }
 
     const supportedValues = new Set(supportedBrowserValues);
-    setForm((current) =>
-      supportedValues.has(current.cookies_browser) ? current : { ...current, cookies_browser: preferredBrowser },
-    );
-    setEditForm((current) =>
-      supportedValues.has(current.cookies_browser) ? current : { ...current, cookies_browser: preferredBrowser },
-    );
     setDownloadBrowser((current) => (supportedValues.has(current) ? current : preferredDownloadBrowser));
-  }, [cookieBrowsers.isSuccess, preferredBrowser, preferredDownloadBrowser, supportedBrowserKey]);
+  }, [cookieBrowsers.isSuccess, preferredDownloadBrowser, supportedBrowserKey]);
 
   useEffect(() => {
     if (!activityData || !activityData.operation) {
@@ -397,7 +378,6 @@ export function PlaylistsPage() {
       title: form.title.trim(),
       folder_name: form.title.trim(),
       folder_path: form.folder_path.trim() || undefined,
-      cookies_browser: form.cookies_browser.trim() || preferredBrowser,
       resolution_limit: form.resolution_limit ? Number(form.resolution_limit) : null,
       active: true,
       playlist_id: null,
@@ -421,7 +401,6 @@ export function PlaylistsPage() {
         title: editForm.title.trim(),
         folder_name: editForm.title.trim(),
         folder_path: editForm.folder_path.trim() || undefined,
-        cookies_browser: editForm.cookies_browser.trim() || preferredBrowser,
         resolution_limit: editForm.resolution_limit ? Number(editForm.resolution_limit) : null,
         active: selectedPlaylist?.active ?? true,
       },
@@ -793,7 +772,7 @@ export function PlaylistsPage() {
                         type="button"
                         onClick={() => openExternalUrl(toPlaylistUrl(selectedPlaylist.source_url))}
                       >
-                        Open playlist
+                        Open on Youtube
                       </button>
                     </article>
                   </div>
@@ -1104,19 +1083,6 @@ export function PlaylistsPage() {
                     value={form.folder_path}
                     onChange={(event) => updateField("folder_path", event.target.value)}
                   />
-                </label>
-                <label>
-                  Cookies browser
-                  <select
-                    value={form.cookies_browser}
-                    onChange={(event) => updateField("cookies_browser", event.target.value)}
-                  >
-                    {browserOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
                 </label>
                 <label>
                   Resolution limit

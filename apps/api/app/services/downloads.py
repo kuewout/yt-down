@@ -68,9 +68,7 @@ def download_missing_videos(
     output_dir = Path(playlist.folder_path)
     output_dir.mkdir(parents=True, exist_ok=True)
     output_template = str(output_dir / "%(upload_date)s %(title)s.%(ext)s")
-    requested_browser = (
-        cookies_browser if cookies_browser is not None else playlist.cookies_browser
-    )
+    requested_browser = cookies_browser
     if not requested_browser:
         requested_browser = settings.default_cookies_browser
     resolved_browser = normalize_cookies_browser(requested_browser)

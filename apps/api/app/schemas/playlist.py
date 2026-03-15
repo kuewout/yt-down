@@ -9,7 +9,6 @@ class PlaylistBase(BaseModel):
     title: str = ""
     folder_name: str = ""
     folder_path: str = ""
-    cookies_browser: str | None = None
     resolution_limit: int | None = Field(default=None, ge=1)
     active: bool = True
 
@@ -22,7 +21,6 @@ class PlaylistUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1)
     folder_name: str | None = Field(default=None, min_length=1)
     folder_path: str | None = Field(default=None, min_length=1)
-    cookies_browser: str | None = None
     resolution_limit: int | None = Field(default=None, ge=1)
     active: bool | None = None
     playlist_id: str | None = None
