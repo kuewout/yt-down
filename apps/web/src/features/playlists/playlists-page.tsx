@@ -180,6 +180,14 @@ function defaultBrowserValue(options: Array<{ value: string }>): string {
   return options[0]?.value ?? "firefox";
 }
 
+function defaultDownloadBrowserValue(options: Array<{ value: string }>): string {
+  if (options.some((option) => option.value === "chrome")) {
+    return "chrome";
+  }
+
+  return options[0]?.value ?? "chrome";
+}
+
 function isUndownloadableError(message: string | null): boolean {
   return Boolean(message?.startsWith("UNDOWNLOADABLE: "));
 }
@@ -233,7 +241,9 @@ export function PlaylistsPage() {
   const [activeTab, setActiveTab] = useState<DetailTab>("overview");
   const [playlistFilter, setPlaylistFilter] = useState<PlaylistFilter>("active");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const [downloadBatchSize, setDownloadBatchSize] = useState("5");
+  const [downloadBrowser, setDownloadBrowser] = useState("chrome");
   const selectedVideos = usePlaylistVideos(selectedPlaylistId);
   const selectedPlaylist = data?.items.find((playlist) => playlist.id === selectedPlaylistId) ?? null;
   const playlistCount = data?.items.length ?? 0;
@@ -252,6 +262,7 @@ export function PlaylistsPage() {
   const [isActivityExpanded, setIsActivityExpanded] = useState(false);
   const browserOptions = cookieBrowsers.data?.options ?? [];
   const preferredBrowser = defaultBrowserValue(browserOptions);
+  const preferredDownloadBrowser = defaultDownloadBrowserValue(browserOptions);
   const supportedBrowserValues = browserOptions.map((option) => option.value);
   const supportedBrowserKey = supportedBrowserValues.join("|");
   const sortedSelectedVideos =
@@ -265,6 +276,10 @@ export function PlaylistsPage() {
 
         return 0;
       }) ?? [];
+  const downloadableVideos = sortedSelectedVideos.filter(
+    (video) => !video.downloaded && !isUndownloadableError(video.download_error),
+  );
+  const nextBatchVideos = downloadableVideos.slice(0, Number(downloadBatchSize));
 
   videos.data?.items.forEach((video) => {
     const current = videoStatsByPlaylist.get(video.playlist_id) ?? { total: 0, downloaded: 0, failed: 0 };
@@ -320,7 +335,8 @@ export function PlaylistsPage() {
     setEditForm((current) =>
       supportedValues.has(current.cookies_browser) ? current : { ...current, cookies_browser: preferredBrowser },
     );
-  }, [cookieBrowsers.isSuccess, preferredBrowser, supportedBrowserKey]);
+    setDownloadBrowser((current) => (supportedValues.has(current) ? current : preferredDownloadBrowser));
+  }, [cookieBrowsers.isSuccess, preferredBrowser, preferredDownloadBrowser, supportedBrowserKey]);
 
   useEffect(() => {
     if (!activityData || !activityData.operation) {
@@ -445,6 +461,25 @@ export function PlaylistsPage() {
     if (result.selected_path) {
       updateEditField("folder_path", result.selected_path);
     }
+  }
+
+  function handleOpenDownloadModal() {
+    setDownloadBatchSize("5");
+    setDownloadBrowser(preferredDownloadBrowser);
+    setIsDownloadModalOpen(true);
+  }
+
+  async function handleConfirmDownload() {
+    if (!selectedPlaylist) {
+      return;
+    }
+
+    await downloadNewVideos.mutateAsync({
+      playlistId: selectedPlaylist.id,
+      batchSize: Number(downloadBatchSize),
+      cookiesBrowser: downloadBrowser,
+    });
+    setIsDownloadModalOpen(false);
   }
 
   return (
@@ -713,13 +748,7 @@ export function PlaylistsPage() {
                           className="secondary-button"
                           type="button"
                           disabled={downloadNewVideos.isPending}
-                          onClick={() =>
-                            downloadNewVideos.mutate({
-                              playlistId: selectedPlaylist.id,
-                              batchSize: Number(downloadBatchSize),
-                              cookiesBrowser: editForm.cookies_browser || preferredBrowser,
-                            })
-                          }
+                          onClick={handleOpenDownloadModal}
                         >
                           {downloadNewVideos.isPending ? "Downloading..." : "Download"}
                         </button>
@@ -769,25 +798,7 @@ export function PlaylistsPage() {
                     </article>
                   </div>
 
-                  {selectedPlaylist.active ? (
-                    <section className="detail-control-card">
-                      <div className="download-batch-row detail-controls">
-                        <label>
-                          Batch size
-                          <select
-                            value={downloadBatchSize}
-                            onChange={(event) => setDownloadBatchSize(event.target.value)}
-                          >
-                            {batchSizeOptions.map((option) => (
-                              <option key={option} value={option.toString()}>
-                                {option} {option === 1 ? "video" : "videos"}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      </div>
-                    </section>
-                  ) : (
+                  {selectedPlaylist.active ? null : (
                     <p className="hint detail-inline-hint">Inactive playlists stay visible and can still sync.</p>
                   )}
                 </div>
@@ -904,20 +915,6 @@ export function PlaylistsPage() {
                       </div>
                     </label>
                     <label>
-                      Cookies browser
-                      <select
-                        disabled={!selectedPlaylist.active}
-                        value={editForm.cookies_browser}
-                        onChange={(event) => updateEditField("cookies_browser", event.target.value)}
-                      >
-                        {browserOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
                       Resolution limit
                       <select
                         disabled={!selectedPlaylist.active}
@@ -984,6 +981,81 @@ export function PlaylistsPage() {
           )}
         </section>
       </div>
+
+      {isDownloadModalOpen && selectedPlaylist && (
+        <div className="modal-backdrop" role="presentation" onClick={() => setIsDownloadModalOpen(false)}>
+          <section
+            className="modal-panel download-modal-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="download-batch-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div>
+                <div className="eyebrow">Download batch</div>
+                <h2 id="download-batch-title" className="section-title">
+                  Confirm Next Download
+                </h2>
+                <p className="hint">Previewing next {nextBatchVideos.length} videos from "{selectedPlaylist.title}".</p>
+              </div>
+              <button className="secondary-button modal-close" type="button" onClick={() => setIsDownloadModalOpen(false)}>
+                Close
+              </button>
+            </div>
+
+            <div className="field-grid">
+              <label>
+                Batch size
+                <select value={downloadBatchSize} onChange={(event) => setDownloadBatchSize(event.target.value)}>
+                  {batchSizeOptions.map((option) => (
+                    <option key={option} value={option.toString()}>
+                      {option} {option === 1 ? "video" : "videos"}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Cookies browser
+                <select value={downloadBrowser} onChange={(event) => setDownloadBrowser(event.target.value)}>
+                  {browserOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="video-list download-preview-list">
+              {nextBatchVideos.length ? (
+                nextBatchVideos.map((video) => (
+                  <article className="video-row" key={video.id}>
+                    <div className="video-row-main">
+                      <strong>{video.title}</strong>
+                      <p className="card-meta">{video.upload_date ? `${video.upload_date} · ${video.video_id}` : video.video_id}</p>
+                    </div>
+                    <span className="pill video-status">Queued</span>
+                  </article>
+                ))
+              ) : (
+                <p className="hint">No downloadable videos found in the next batch.</p>
+              )}
+            </div>
+
+            <div className="card-actions">
+              <button
+                className="primary-button"
+                type="button"
+                disabled={downloadNewVideos.isPending || nextBatchVideos.length === 0}
+                onClick={handleConfirmDownload}
+              >
+                {downloadNewVideos.isPending ? "Downloading..." : `Download ${nextBatchVideos.length}`}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {isCreateModalOpen && (
         <div className="modal-backdrop" role="presentation" onClick={() => setIsCreateModalOpen(false)}>

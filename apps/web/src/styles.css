@@ -1088,38 +1088,14 @@ a {
   justify-content: flex-end;
 }
 
-.download-batch-row {
+.download-modal-panel {
   display: grid;
-  grid-template-columns: minmax(180px, 240px);
-  gap: 14px;
-  align-items: end;
+  gap: 16px;
 }
 
-.download-batch-row label {
-  display: grid;
-  gap: 8px;
-  color: var(--muted);
-}
-
-.download-batch-row select {
-  min-height: 46px;
-  padding: 12px 14px;
-  border: 1px solid rgba(53, 44, 34, 0.14);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.78);
-  color: var(--ink);
-  font: inherit;
-}
-
-.download-batch-row .hint {
-  margin: 0;
-}
-
-.detail-controls {
-  padding: 16px 18px;
-  border: 1px solid var(--panel-border);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.6);
+.download-preview-list {
+  max-height: 320px;
+  overflow: auto;
 }
 
 .status-toggle-row {
@@ -1408,10 +1384,6 @@ a {
     justify-content: space-between;
     flex-direction: row;
     align-items: center;
-  }
-
-  .download-batch-row {
-    grid-template-columns: 1fr;
   }
 
   .toolbar-button {
