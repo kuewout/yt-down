@@ -669,6 +669,7 @@ export function PlaylistsPage() {
   function handleOpenDownloadModal() {
     setDownloadBatchSize("5");
     setDownloadBrowser(preferredDownloadBrowser);
+    setIsActivityExpanded(false);
     setIsDownloadModalOpen(true);
   }
 

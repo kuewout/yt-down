@@ -272,7 +272,7 @@ def _download_videos(
             activity_registry.update(
                 video_id=video.id,
                 video_title=video.title,
-                message=f"Saved via {current_browser_label}",
+                message=f"Saved video {index}/{attempted_count} via {current_browser_label}",
                 items_completed=index,
             )
 
