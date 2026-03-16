@@ -24,17 +24,6 @@ import {
 const ACTIVITY_HISTORY_STORAGE_KEY = "yt-down:activity-history:v1";
 const ACTIVITY_HISTORY_LIMIT = 100;
 
-function buildActivityEventKey(activity: ActivityResponse): string {
-  return [
-    activity.updated_at ?? activity.finished_at ?? activity.started_at ?? "unknown",
-    activity.operation ?? "none",
-    activity.playlist_id ?? "none",
-    activity.video_id ?? "none",
-    activity.items_completed,
-    activity.message ?? "",
-  ].join(":");
-}
-
 function loadPersistedActivityEvents(): ActivityResponse[] {
   if (typeof window === "undefined") {
     return [];
@@ -93,9 +82,6 @@ export function useActivity() {
         }
         setData(payload);
         setEvents((current) => {
-          if (current.length && buildActivityEventKey(current[0]) === buildActivityEventKey(payload)) {
-            return current;
-          }
           return [payload, ...current].slice(0, ACTIVITY_HISTORY_LIMIT);
         });
         setError(null);

@@ -80,6 +80,7 @@ def _download_videos(
     is_round_robin = resolved_browser == ROUND_ROBIN_COOKIES_BROWSER
     round_robin_browsers: list[str] = []
     round_robin_index = 0
+    unusable_round_robin_browsers: set[str] = set()
     if is_round_robin:
         round_robin_browsers = [
             option.value
@@ -131,12 +132,15 @@ def _download_videos(
             round_robin_start = 0
             start_message_browser = current_browser_label
             if is_round_robin:
-                if round_robin_browsers:
-                    start = round_robin_index % len(round_robin_browsers)
+                eligible_browsers = [
+                    browser
+                    for browser in round_robin_browsers
+                    if browser not in unusable_round_robin_browsers
+                ]
+                if eligible_browsers:
+                    start = round_robin_index % len(eligible_browsers)
                     round_robin_start = start
-                    ordered_browsers = (
-                        round_robin_browsers[start:] + round_robin_browsers[:start]
-                    )
+                    ordered_browsers = eligible_browsers[start:] + eligible_browsers[:start]
                     requested_video_browser = ordered_browsers[0]
                     current_browser_label = requested_video_browser
                     start_message_browser = ROUND_ROBIN_COOKIES_BROWSER
@@ -183,6 +187,7 @@ def _download_videos(
                         except YtDlpError as exc:
                             last_browser_error = exc
                             if _is_unusable_browser_error(str(exc)):
+                                unusable_round_robin_browsers.add(candidate)
                                 logger.info(
                                     "Skipping unusable cookies browser=%s for video=%s error=%s",
                                     candidate,
