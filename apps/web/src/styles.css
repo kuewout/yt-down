@@ -1173,6 +1173,85 @@ a {
   gap: 12px;
 }
 
+.detail-stat-card {
+  position: relative;
+  overflow: hidden;
+  border-width: 1px;
+}
+
+.detail-stat-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 100%;
+  border-radius: 18px 0 0 18px;
+}
+
+.detail-stat-videos {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(255, 255, 255, 0.74));
+  border-color: rgba(37, 99, 235, 0.24);
+}
+
+.detail-stat-videos::before {
+  background: rgba(37, 99, 235, 0.68);
+}
+
+.detail-stat-downloaded {
+  background: linear-gradient(135deg, rgba(21, 128, 61, 0.1), rgba(255, 255, 255, 0.74));
+  border-color: rgba(21, 128, 61, 0.24);
+}
+
+.detail-stat-downloaded::before {
+  background: rgba(21, 128, 61, 0.68);
+}
+
+.detail-stat-missing {
+  background: linear-gradient(135deg, rgba(202, 138, 4, 0.1), rgba(255, 255, 255, 0.74));
+  border-color: rgba(202, 138, 4, 0.24);
+}
+
+.detail-stat-missing::before {
+  background: rgba(202, 138, 4, 0.68);
+}
+
+.detail-stat-failed {
+  background: linear-gradient(135deg, rgba(190, 24, 93, 0.1), rgba(255, 255, 255, 0.74));
+  border-color: rgba(190, 24, 93, 0.24);
+}
+
+.detail-stat-failed::before {
+  background: rgba(190, 24, 93, 0.68);
+}
+
+.detail-content-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.detail-settings-card,
+.detail-videos-card {
+  align-self: stretch;
+}
+
+.detail-settings-card {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.detail-videos-card {
+  background:
+    linear-gradient(180deg, rgba(15, 118, 110, 0.08), rgba(255, 255, 255, 0.64));
+}
+
+.detail-video-list {
+  max-height: 520px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
 .tab-panel {
   margin-top: 0;
   padding-top: 0;
@@ -1392,7 +1471,8 @@ a {
   .playlist-card-shell,
   .detail-hero,
   .detail-header-controls,
-  .selected-summary {
+  .selected-summary,
+  .detail-content-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1421,6 +1501,10 @@ a {
 
   .summary-action-button {
     width: 100%;
+  }
+
+  .detail-video-list {
+    max-height: 360px;
   }
 }
 

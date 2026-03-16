@@ -25,7 +25,6 @@ type FormState = {
   resolution_limit: string;
 };
 
-type DetailTab = "overview" | "videos" | "settings";
 type PlaylistFilter = "active" | "inactive";
 type ActivityLogEntry = {
   key: string;
@@ -46,12 +45,6 @@ const initialFormState: FormState = {
 };
 
 const batchSizeOptions = [1, 5, 10, 25, 50];
-
-const detailTabs: Array<{ key: DetailTab; label: string }> = [
-  { key: "overview", label: "Overview" },
-  { key: "videos", label: "Videos" },
-  { key: "settings", label: "Settings" },
-];
 
 function formatRelativeTime(timestamp: string): string {
   const value = new Date(timestamp).getTime();
@@ -240,7 +233,6 @@ export function PlaylistsPage() {
   const [form, setForm] = useState<FormState>(initialFormState);
   const [editForm, setEditForm] = useState<FormState>(initialFormState);
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<DetailTab>("overview");
   const [playlistFilter, setPlaylistFilter] = useState<PlaylistFilter>("active");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
@@ -396,7 +388,6 @@ export function PlaylistsPage() {
       playlist_id: null,
     });
     setSelectedPlaylistId(created.id);
-    setActiveTab("overview");
     await syncPlaylist.mutateAsync(created.id);
     setForm(initialFormState);
     setIsCreateModalOpen(false);
@@ -427,7 +418,6 @@ export function PlaylistsPage() {
 
     await deletePlaylist.mutateAsync(selectedPlaylistId);
     setSelectedPlaylistId(null);
-    setActiveTab("overview");
   }
 
   async function handleToggleSelectedPlaylistActive() {
@@ -635,7 +625,6 @@ export function PlaylistsPage() {
                         type="button"
                         onClick={() => {
                           setSelectedPlaylistId(playlist.id);
-                          setActiveTab("overview");
                         }}
                       >
                         <div className="card-topline">
@@ -746,20 +735,6 @@ export function PlaylistsPage() {
                         </button>
                       )}
                     </div>
-                    <div className="tab-row detail-tab-row" role="tablist" aria-label="Playlist detail sections">
-                      {detailTabs.map((tab) => (
-                        <button
-                          key={tab.key}
-                          className={`tab-button ${activeTab === tab.key ? "active" : ""}`}
-                          type="button"
-                          role="tab"
-                          aria-selected={activeTab === tab.key}
-                          onClick={() => setActiveTab(tab.key)}
-                        >
-                          {tab.label}
-                        </button>
-                      ))}
-                    </div>
                   </div>
                 </div>
 
@@ -803,31 +778,129 @@ export function PlaylistsPage() {
                   )}
                 </div>
               </div>
-              {activeTab === "overview" && (
-                <div className="detail-stack">
-                  <section className="overview-grid">
-                    <article className="summary-card">
-                      <span className="status-label">Videos</span>
-                      <strong>{selectedVideos.data?.items.length ?? 0}</strong>
-                    </article>
-                    <article className="summary-card">
-                      <span className="status-label">Downloaded</span>
-                      <strong>{downloadedCount}</strong>
-                    </article>
-                    <article className="summary-card">
-                      <span className="status-label">Missing</span>
-                      <strong>{missingCount}</strong>
-                    </article>
-                    <article className="summary-card">
-                      <span className="status-label">Failed</span>
-                      <strong>{failedCount}</strong>
-                    </article>
-                  </section>
-                </div>
-              )}
+              <section className="overview-grid">
+                <article className="summary-card detail-stat-card detail-stat-videos">
+                  <span className="status-label">Videos</span>
+                  <strong>{selectedVideos.data?.items.length ?? 0}</strong>
+                </article>
+                <article className="summary-card detail-stat-card detail-stat-downloaded">
+                  <span className="status-label">Downloaded</span>
+                  <strong>{downloadedCount}</strong>
+                </article>
+                <article className="summary-card detail-stat-card detail-stat-missing">
+                  <span className="status-label">Missing</span>
+                  <strong>{missingCount}</strong>
+                </article>
+                <article className="summary-card detail-stat-card detail-stat-failed">
+                  <span className="status-label">Failed</span>
+                  <strong>{failedCount}</strong>
+                </article>
+              </section>
 
-              {activeTab === "videos" && (
-                <div className="video-section tab-panel">
+              <section className="detail-content-grid">
+                <div className="selected-summary-card detail-settings-card">
+                  <div className="summary-inline-row">
+                    <span className="status-label">Playlist settings</span>
+                  </div>
+                  <form className="playlist-form compact-form" onSubmit={handleUpdateSelectedPlaylist}>
+                    <div className="status-toggle-row">
+                      <span className="status-label">Status: {selectedPlaylist.active ? "Active" : "Inactive"}</span>
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        disabled={updatePlaylist.isPending}
+                        onClick={handleToggleSelectedPlaylistActive}
+                      >
+                        {updatePlaylist.isPending
+                          ? "Saving..."
+                          : selectedPlaylist.active
+                            ? "Make inactive"
+                            : "Make active"}
+                      </button>
+                    </div>
+                    <div className="field-grid">
+                      <label>
+                        Title
+                        <input
+                          disabled={!selectedPlaylist.active}
+                          value={editForm.title}
+                          onChange={(event) => updateTitleAndFolder(setEditForm, event.target.value)}
+                        />
+                      </label>
+                      <label className="field-span-full">
+                        Folder path
+                        <div className="folder-path-row">
+                          <input
+                            disabled={!selectedPlaylist.active}
+                            value={editForm.folder_path}
+                            onChange={(event) => updateEditField("folder_path", event.target.value)}
+                          />
+                          <button
+                            className="secondary-button"
+                            type="button"
+                            disabled={!selectedPlaylist.active || pickPlaylistFolder.isPending}
+                            onClick={handlePickFolderPath}
+                          >
+                            {pickPlaylistFolder.isPending ? "Choosing..." : "Choose folder"}
+                          </button>
+                        </div>
+                      </label>
+                      <label>
+                        Resolution limit
+                        <select
+                          disabled={!selectedPlaylist.active}
+                          value={editForm.resolution_limit}
+                          onChange={(event) => updateEditField("resolution_limit", event.target.value)}
+                        >
+                          <option value="">Best available</option>
+                          <option value="1440">1440p</option>
+                          <option value="1080">1080p</option>
+                          <option value="720">720p</option>
+                          <option value="480">480p</option>
+                          <option value="360">360p</option>
+                        </select>
+                      </label>
+                    </div>
+                    <div className="card-actions card-actions-wrap">
+                      {selectedPlaylist.active && (
+                        <button className="primary-button" type="submit" disabled={updatePlaylist.isPending}>
+                          {updatePlaylist.isPending ? "Saving..." : "Save settings"}
+                        </button>
+                      )}
+                      <button
+                        className="danger-button"
+                        type="button"
+                        disabled={deletePlaylist.isPending}
+                        onClick={handleDeleteSelectedPlaylist}
+                      >
+                        {deletePlaylist.isPending ? "Removing..." : "Remove playlist"}
+                      </button>
+                    </div>
+                    {updatePlaylist.isError && (
+                      <p className="error-text">
+                        Failed to update playlist:{" "}
+                        {updatePlaylist.error instanceof Error ? updatePlaylist.error.message : "Unknown error"}
+                      </p>
+                    )}
+                    {pickPlaylistFolder.isError && (
+                      <p className="error-text">
+                        Failed to open folder picker:{" "}
+                        {pickPlaylistFolder.error instanceof Error ? pickPlaylistFolder.error.message : "Unknown error"}
+                      </p>
+                    )}
+                    {deletePlaylist.isError && (
+                      <p className="error-text">
+                        Failed to remove playlist:{" "}
+                        {deletePlaylist.error instanceof Error ? deletePlaylist.error.message : "Unknown error"}
+                      </p>
+                    )}
+                  </form>
+                </div>
+
+                <div className="selected-summary-card detail-videos-card">
+                  <div className="summary-inline-row">
+                    <span className="status-label">Video list</span>
+                  </div>
                   {selectedVideos.isLoading && <p className="hint">Loading videos...</p>}
                   {selectedVideos.isError && (
                     <p className="error-text">
@@ -835,7 +908,7 @@ export function PlaylistsPage() {
                       {selectedVideos.error instanceof Error ? selectedVideos.error.message : "Unknown error"}
                     </p>
                   )}
-                  <div className="video-list">
+                  <div className="video-list detail-video-list">
                     {sortedSelectedVideos.length ? (
                       sortedSelectedVideos.map((video) => (
                         <article className="video-row" key={video.id}>
@@ -862,103 +935,7 @@ export function PlaylistsPage() {
                     )}
                   </div>
                 </div>
-              )}
-
-              {activeTab === "settings" && (
-                <form className="playlist-form compact-form tab-panel" onSubmit={handleUpdateSelectedPlaylist}>
-                  <div className="status-toggle-row">
-                    <span className="status-label">Status: {selectedPlaylist.active ? "Active" : "Inactive"}</span>
-                    <button
-                      className="secondary-button"
-                      type="button"
-                      disabled={updatePlaylist.isPending}
-                      onClick={handleToggleSelectedPlaylistActive}
-                    >
-                      {updatePlaylist.isPending
-                        ? "Saving..."
-                        : selectedPlaylist.active
-                          ? "Make inactive"
-                          : "Make active"}
-                    </button>
-                  </div>
-                  <div className="field-grid">
-                    <label>
-                      Title
-                      <input
-                        disabled={!selectedPlaylist.active}
-                        value={editForm.title}
-                        onChange={(event) => updateTitleAndFolder(setEditForm, event.target.value)}
-                      />
-                    </label>
-                    <label className="field-span-full">
-                      Folder path
-                      <div className="folder-path-row">
-                        <input
-                          disabled={!selectedPlaylist.active}
-                          value={editForm.folder_path}
-                          onChange={(event) => updateEditField("folder_path", event.target.value)}
-                        />
-                        <button
-                          className="secondary-button"
-                          type="button"
-                          disabled={!selectedPlaylist.active || pickPlaylistFolder.isPending}
-                          onClick={handlePickFolderPath}
-                        >
-                          {pickPlaylistFolder.isPending ? "Choosing..." : "Choose folder"}
-                        </button>
-                      </div>
-                    </label>
-                    <label>
-                      Resolution limit
-                      <select
-                        disabled={!selectedPlaylist.active}
-                        value={editForm.resolution_limit}
-                        onChange={(event) => updateEditField("resolution_limit", event.target.value)}
-                      >
-                        <option value="">Best available</option>
-                        <option value="1440">1440p</option>
-                        <option value="1080">1080p</option>
-                        <option value="720">720p</option>
-                        <option value="480">480p</option>
-                        <option value="360">360p</option>
-                      </select>
-                    </label>
-                  </div>
-                  <div className="card-actions card-actions-wrap">
-                    {selectedPlaylist.active && (
-                      <button className="primary-button" type="submit" disabled={updatePlaylist.isPending}>
-                        {updatePlaylist.isPending ? "Saving..." : "Save settings"}
-                      </button>
-                    )}
-                    <button
-                      className="danger-button"
-                      type="button"
-                      disabled={deletePlaylist.isPending}
-                      onClick={handleDeleteSelectedPlaylist}
-                    >
-                      {deletePlaylist.isPending ? "Removing..." : "Remove playlist"}
-                    </button>
-                  </div>
-                  {updatePlaylist.isError && (
-                    <p className="error-text">
-                      Failed to update playlist:{" "}
-                      {updatePlaylist.error instanceof Error ? updatePlaylist.error.message : "Unknown error"}
-                    </p>
-                  )}
-                  {pickPlaylistFolder.isError && (
-                    <p className="error-text">
-                      Failed to open folder picker:{" "}
-                      {pickPlaylistFolder.error instanceof Error ? pickPlaylistFolder.error.message : "Unknown error"}
-                    </p>
-                  )}
-                  {deletePlaylist.isError && (
-                    <p className="error-text">
-                      Failed to remove playlist:{" "}
-                      {deletePlaylist.error instanceof Error ? deletePlaylist.error.message : "Unknown error"}
-                    </p>
-                  )}
-                </form>
-              )}
+              </section>
               {openPlaylistFolder.isError && (
                 <p className="error-text">
                   Failed to open folder:{" "}
