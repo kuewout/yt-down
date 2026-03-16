@@ -93,16 +93,24 @@ function toPlaylistUrl(sourceUrl: string): string {
   return sourceUrl;
 }
 
-function shortenInlineText(value: string, maxLength: number): string {
-  if (value.length <= maxLength) {
-    return value;
+function splitMiddleText(value: string, headLength: number, tailLength: number): {
+  head: string;
+  tail: string;
+  trimmed: boolean;
+} {
+  if (value.length <= headLength + tailLength + 3) {
+    return {
+      head: value,
+      tail: "",
+      trimmed: false,
+    };
   }
 
-  if (maxLength <= 3) {
-    return value.slice(0, maxLength);
-  }
-
-  return `${value.slice(0, maxLength - 3)}...`;
+  return {
+    head: value.slice(0, headLength),
+    tail: value.slice(value.length - tailLength),
+    trimmed: true,
+  };
 }
 
 function openExternalUrl(url: string) {
@@ -241,13 +249,19 @@ export function PlaylistsPage() {
   const selectedVideos = usePlaylistVideos(selectedPlaylistId);
   const selectedPlaylist = data?.items.find((playlist) => playlist.id === selectedPlaylistId) ?? null;
   const selectedPlaylistSourceUrl = selectedPlaylist ? toPlaylistUrl(selectedPlaylist.source_url) : "";
+  const folderPathPreview = splitMiddleText(selectedPlaylist?.folder_path ?? "", 48, 36);
+  const sourceUrlPreview = splitMiddleText(selectedPlaylistSourceUrl, 48, 36);
   const playlistCount = data?.items.length ?? 0;
   const activePlaylistCount = data?.items.filter((playlist) => playlist.active).length ?? 0;
   const inactivePlaylistCount = playlistCount - activePlaylistCount;
+  const totalVideosCount = selectedVideos.data?.items.length ?? 0;
   const downloadedCount = selectedVideos.data?.items.filter((video) => video.downloaded).length ?? 0;
   const failedCount =
     selectedVideos.data?.items.filter((video) => !video.downloaded && Boolean(video.download_error)).length ?? 0;
-  const missingCount = (selectedVideos.data?.items.length ?? 0) - downloadedCount;
+  const missingCount = Math.max(0, totalVideosCount - downloadedCount - failedCount);
+  const downloadedPercent = totalVideosCount > 0 ? Math.round((downloadedCount / totalVideosCount) * 100) : 0;
+  const missingPercent = totalVideosCount > 0 ? Math.round((missingCount / totalVideosCount) * 100) : 0;
+  const failedPercent = totalVideosCount > 0 ? Math.round((failedCount / totalVideosCount) * 100) : 0;
   const videoStatsByPlaylist = new Map<string, { total: number; downloaded: number; failed: number }>();
   const visiblePlaylists =
     data?.items.filter((playlist) => (playlistFilter === "active" ? playlist.active : !playlist.active)) ?? [];
@@ -743,8 +757,15 @@ export function PlaylistsPage() {
                     <article className="selected-summary-card">
                       <div className="summary-inline-row">
                         <span className="status-label">Folder</span>
-                        <p className="card-meta summary-inline-value" title={selectedPlaylist.folder_path}>
-                          {shortenInlineText(selectedPlaylist.folder_path, 72)}
+                        <p className="card-meta summary-inline-value summary-inline-value-2line" title={selectedPlaylist.folder_path}>
+                          {folderPathPreview.trimmed ? (
+                            <>
+                              <span className="summary-inline-start">{folderPathPreview.head}...</span>
+                              <span className="summary-inline-end">...{folderPathPreview.tail}</span>
+                            </>
+                          ) : (
+                            <span className="summary-inline-start">{folderPathPreview.head}</span>
+                          )}
                         </p>
                       </div>
                       <button
@@ -759,8 +780,15 @@ export function PlaylistsPage() {
                     <article className="selected-summary-card">
                       <div className="summary-inline-row">
                         <span className="status-label">Source</span>
-                        <p className="card-link summary-inline-value" title={selectedPlaylistSourceUrl}>
-                          {shortenInlineText(selectedPlaylistSourceUrl, 72)}
+                        <p className="card-link summary-inline-value summary-inline-value-2line" title={selectedPlaylistSourceUrl}>
+                          {sourceUrlPreview.trimmed ? (
+                            <>
+                              <span className="summary-inline-start">{sourceUrlPreview.head}...</span>
+                              <span className="summary-inline-end">...{sourceUrlPreview.tail}</span>
+                            </>
+                          ) : (
+                            <span className="summary-inline-start">{sourceUrlPreview.head}</span>
+                          )}
                         </p>
                       </div>
                       <button
@@ -779,21 +807,26 @@ export function PlaylistsPage() {
                 </div>
               </div>
               <section className="overview-grid">
-                <article className="summary-card detail-stat-card detail-stat-videos">
-                  <span className="status-label">Videos</span>
-                  <strong>{selectedVideos.data?.items.length ?? 0}</strong>
-                </article>
                 <article className="summary-card detail-stat-card detail-stat-downloaded">
                   <span className="status-label">Downloaded</span>
-                  <strong>{downloadedCount}</strong>
+                  <strong>{downloadedPercent}%</strong>
+                  <p className="card-meta">
+                    {downloadedCount}/{totalVideosCount} videos
+                  </p>
                 </article>
                 <article className="summary-card detail-stat-card detail-stat-missing">
                   <span className="status-label">Missing</span>
-                  <strong>{missingCount}</strong>
+                  <strong>{missingPercent}%</strong>
+                  <p className="card-meta">
+                    {missingCount}/{totalVideosCount} videos
+                  </p>
                 </article>
                 <article className="summary-card detail-stat-card detail-stat-failed">
                   <span className="status-label">Failed</span>
-                  <strong>{failedCount}</strong>
+                  <strong>{failedPercent}%</strong>
+                  <p className="card-meta">
+                    {failedCount}/{totalVideosCount} videos
+                  </p>
                 </article>
               </section>
 
