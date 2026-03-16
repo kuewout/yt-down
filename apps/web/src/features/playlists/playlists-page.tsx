@@ -26,6 +26,7 @@ type FormState = {
 };
 
 type PlaylistFilter = "active" | "inactive";
+type DetailContentTab = "settings" | "videos";
 type ActivityLogEntry = {
   key: string;
   title: string;
@@ -93,22 +94,22 @@ function toPlaylistUrl(sourceUrl: string): string {
   return sourceUrl;
 }
 
-function splitMiddleText(value: string, headLength: number, tailLength: number): {
-  head: string;
-  tail: string;
+function splitMiddleText(value: string, segmentLength: number): {
+  start: string;
+  end: string;
   trimmed: boolean;
 } {
-  if (value.length <= headLength + tailLength + 3) {
+  if (value.length <= segmentLength * 2 + 3) {
     return {
-      head: value,
-      tail: "",
+      start: value,
+      end: "",
       trimmed: false,
     };
   }
 
   return {
-    head: value.slice(0, headLength),
-    tail: value.slice(value.length - tailLength),
+    start: `${value.slice(0, segmentLength)}...`,
+    end: `...${value.slice(value.length - segmentLength)}`,
     trimmed: true,
   };
 }
@@ -244,13 +245,14 @@ export function PlaylistsPage() {
   const [playlistFilter, setPlaylistFilter] = useState<PlaylistFilter>("active");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
+  const [detailContentTab, setDetailContentTab] = useState<DetailContentTab>("settings");
   const [downloadBatchSize, setDownloadBatchSize] = useState("5");
   const [downloadBrowser, setDownloadBrowser] = useState("chrome");
   const selectedVideos = usePlaylistVideos(selectedPlaylistId);
   const selectedPlaylist = data?.items.find((playlist) => playlist.id === selectedPlaylistId) ?? null;
   const selectedPlaylistSourceUrl = selectedPlaylist ? toPlaylistUrl(selectedPlaylist.source_url) : "";
-  const folderPathPreview = splitMiddleText(selectedPlaylist?.folder_path ?? "", 48, 36);
-  const sourceUrlPreview = splitMiddleText(selectedPlaylistSourceUrl, 48, 36);
+  const folderPathPreview = splitMiddleText(selectedPlaylist?.folder_path ?? "", 42);
+  const sourceUrlPreview = splitMiddleText(selectedPlaylistSourceUrl, 42);
   const playlistCount = data?.items.length ?? 0;
   const activePlaylistCount = data?.items.filter((playlist) => playlist.active).length ?? 0;
   const inactivePlaylistCount = playlistCount - activePlaylistCount;
@@ -328,6 +330,12 @@ export function PlaylistsPage() {
       resolution_limit: selectedPlaylist.resolution_limit?.toString() ?? "",
     });
   }, [selectedPlaylist]);
+
+  useEffect(() => {
+    if (selectedPlaylistId) {
+      setDetailContentTab("settings");
+    }
+  }, [selectedPlaylistId]);
 
   useEffect(() => {
     if (!cookieBrowsers.isSuccess) {
@@ -639,6 +647,7 @@ export function PlaylistsPage() {
                         type="button"
                         onClick={() => {
                           setSelectedPlaylistId(playlist.id);
+                          setDetailContentTab("settings");
                         }}
                       >
                         <div className="card-topline">
@@ -755,16 +764,16 @@ export function PlaylistsPage() {
                 <div className="detail-side-stack">
                   <div className="selected-summary detail-summary">
                     <article className="selected-summary-card">
-                      <div className="summary-inline-row">
+                      <div className="summary-stack">
                         <span className="status-label">Folder</span>
                         <p className="card-meta summary-inline-value summary-inline-value-2line" title={selectedPlaylist.folder_path}>
                           {folderPathPreview.trimmed ? (
                             <>
-                              <span className="summary-inline-start">{folderPathPreview.head}...</span>
-                              <span className="summary-inline-end">...{folderPathPreview.tail}</span>
+                              <span className="summary-inline-start">{folderPathPreview.start}</span>
+                              <span className="summary-inline-end">{folderPathPreview.end}</span>
                             </>
                           ) : (
-                            <span className="summary-inline-start">{folderPathPreview.head}</span>
+                            <span className="summary-inline-start">{folderPathPreview.start}</span>
                           )}
                         </p>
                       </div>
@@ -778,16 +787,16 @@ export function PlaylistsPage() {
                       </button>
                     </article>
                     <article className="selected-summary-card">
-                      <div className="summary-inline-row">
+                      <div className="summary-stack">
                         <span className="status-label">Source</span>
                         <p className="card-link summary-inline-value summary-inline-value-2line" title={selectedPlaylistSourceUrl}>
                           {sourceUrlPreview.trimmed ? (
                             <>
-                              <span className="summary-inline-start">{sourceUrlPreview.head}...</span>
-                              <span className="summary-inline-end">...{sourceUrlPreview.tail}</span>
+                              <span className="summary-inline-start">{sourceUrlPreview.start}</span>
+                              <span className="summary-inline-end">{sourceUrlPreview.end}</span>
                             </>
                           ) : (
-                            <span className="summary-inline-start">{sourceUrlPreview.head}</span>
+                            <span className="summary-inline-start">{sourceUrlPreview.start}</span>
                           )}
                         </p>
                       </div>
@@ -830,14 +839,38 @@ export function PlaylistsPage() {
                 </article>
               </section>
 
-              <section className="detail-content-grid">
+              <div className="tab-row detail-content-tab-row" role="tablist" aria-label="Selected playlist details">
+                <button
+                  className={`tab-button ${detailContentTab === "settings" ? "active" : ""}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={detailContentTab === "settings"}
+                  onClick={() => setDetailContentTab("settings")}
+                >
+                  Settings
+                </button>
+                <button
+                  className={`tab-button ${detailContentTab === "videos" ? "active" : ""}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={detailContentTab === "videos"}
+                  onClick={() => setDetailContentTab("videos")}
+                >
+                  Videos
+                </button>
+              </div>
+
+              {detailContentTab === "settings" && (
+                <section className="detail-content-single">
                 <div className="selected-summary-card detail-settings-card">
                   <div className="summary-inline-row">
                     <span className="status-label">Playlist settings</span>
                   </div>
                   <form className="playlist-form compact-form" onSubmit={handleUpdateSelectedPlaylist}>
-                    <div className="status-toggle-row">
-                      <span className="status-label">Status: {selectedPlaylist.active ? "Active" : "Inactive"}</span>
+                    <div className="status-toggle-row status-toggle-simple">
+                      <span className={`status-chip ${selectedPlaylist.active ? "status-chip-active" : "status-chip-inactive"}`}>
+                        {selectedPlaylist.active ? "Active" : "Inactive"}
+                      </span>
                       <button
                         className="secondary-button"
                         type="button"
@@ -869,12 +902,21 @@ export function PlaylistsPage() {
                             onChange={(event) => updateEditField("folder_path", event.target.value)}
                           />
                           <button
-                            className="secondary-button"
+                            className="icon-action-button"
                             type="button"
+                            aria-label="Choose folder"
+                            title="Choose folder"
                             disabled={!selectedPlaylist.active || pickPlaylistFolder.isPending}
                             onClick={handlePickFolderPath}
                           >
-                            {pickPlaylistFolder.isPending ? "Choosing..." : "Choose folder"}
+                            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                              <path
+                                d="M3 7.5A2.5 2.5 0 0 1 5.5 5h4.3l1.6 1.7h7.1A2.5 2.5 0 0 1 21 9.2v8.3a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"
+                                stroke="currentColor"
+                                strokeWidth="1.6"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
                           </button>
                         </div>
                       </label>
@@ -929,7 +971,11 @@ export function PlaylistsPage() {
                     )}
                   </form>
                 </div>
+                </section>
+              )}
 
+              {detailContentTab === "videos" && (
+                <section className="detail-content-single">
                 <div className="selected-summary-card detail-videos-card">
                   <div className="summary-inline-row">
                     <span className="status-label">Video list</span>
@@ -968,7 +1014,8 @@ export function PlaylistsPage() {
                     )}
                   </div>
                 </div>
-              </section>
+                </section>
+              )}
               {openPlaylistFolder.isError && (
                 <p className="error-text">
                   Failed to open folder:{" "}

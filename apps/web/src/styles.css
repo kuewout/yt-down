@@ -1012,8 +1012,14 @@ a {
   display: grid;
   gap: 2px;
   white-space: normal;
-  overflow: visible;
+  overflow: hidden;
   text-overflow: clip;
+}
+
+.summary-stack {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
 }
 
 .summary-inline-start,
@@ -1028,7 +1034,7 @@ a {
 }
 
 .summary-inline-end {
-  text-align: right;
+  text-align: left;
 }
 
 .status-chip {
@@ -1148,6 +1154,12 @@ a {
   background: rgba(255, 255, 255, 0.58);
 }
 
+.status-toggle-simple {
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+}
+
 .status-toggle-row p {
   margin: 6px 0 0;
 }
@@ -1253,6 +1265,15 @@ a {
   grid-template-columns: minmax(300px, 0.94fr) minmax(0, 1.22fr);
   gap: 14px;
   align-items: start;
+}
+
+.detail-content-tab-row {
+  margin-top: 4px;
+}
+
+.detail-content-single {
+  display: grid;
+  gap: 14px;
 }
 
 .detail-settings-card,
