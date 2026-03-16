@@ -59,13 +59,22 @@ class BrowserAvailability:
 def _build_format_selector(resolution_limit: int | None) -> str:
     if resolution_limit:
         return (
-            f"bestvideo*[ext=mp4][height<={resolution_limit}]+bestaudio[ext=m4a]"
+            f"bestvideo*[ext=mp4][vcodec^=avc1][height<={resolution_limit}]+bestaudio[ext=m4a]"
+            f"/best[ext=mp4][vcodec^=avc1][height<={resolution_limit}]"
+            f"/bestvideo*[ext=mp4][height<={resolution_limit}]+bestaudio[ext=m4a]"
             f"/bestvideo*[height<={resolution_limit}]+bestaudio"
             f"/best[ext=mp4][height<={resolution_limit}]"
             f"/best[height<={resolution_limit}]"
         )
 
-    return "bestvideo*[ext=mp4]+bestaudio[ext=m4a]/bestvideo*+bestaudio/best[ext=mp4]/best"
+    return (
+        "bestvideo*[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]"
+        "/best[ext=mp4][vcodec^=avc1]"
+        "/bestvideo*[ext=mp4]+bestaudio[ext=m4a]"
+        "/bestvideo*+bestaudio"
+        "/best[ext=mp4]"
+        "/best"
+    )
 
 
 def _supported_browser_labels() -> dict[str, str]:
