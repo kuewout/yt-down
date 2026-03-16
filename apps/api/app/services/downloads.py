@@ -129,6 +129,7 @@ def _download_videos(
             requested_video_browser = requested_browser
             ordered_browsers: list[str] = []
             round_robin_start = 0
+            start_message_browser = current_browser_label
             if is_round_robin:
                 if round_robin_browsers:
                     start = round_robin_index % len(round_robin_browsers)
@@ -138,24 +139,27 @@ def _download_videos(
                     )
                     requested_video_browser = ordered_browsers[0]
                     current_browser_label = requested_video_browser
+                    start_message_browser = ROUND_ROBIN_COOKIES_BROWSER
                 else:
                     requested_video_browser = None
                     current_browser_label = "none"
+                    start_message_browser = "none"
             else:
                 current_browser_label = browser_label
+                start_message_browser = current_browser_label
 
             activity_registry.update(
                 video_id=video.id,
                 video_title=video.title,
-                message=f"Starting video {index}/{attempted_count} via {current_browser_label}",
-                items_completed=index - 1,
+                message=f"Starting video {index}/{attempted_count} via {start_message_browser}",
+                items_completed=index,
             )
             logger.info(
                 "Downloading video %s/%s title=%s cookies_browser=%s",
                 index,
                 attempted_count,
                 video.title,
-                current_browser_label,
+                start_message_browser,
             )
             try:
                 if is_round_robin:

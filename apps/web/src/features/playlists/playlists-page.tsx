@@ -171,8 +171,13 @@ function buildActivityTitle(activity: ActivityResponse): string {
 
 function buildActivityTone(activity: ActivityResponse): ActivityLogEntry["tone"] {
   const detail = `${activity.message ?? ""} ${activity.video_title ?? ""}`.toLowerCase();
+  const failedCountMatch = detail.match(/\bfailed\s+(\d+)\b/);
+  const hasFailed = detail.includes("failed");
+  const hasError = detail.includes("error");
+  const hasNonZeroFailed =
+    failedCountMatch !== null ? Number.parseInt(failedCountMatch[1] ?? "0", 10) > 0 : hasFailed;
 
-  if (detail.includes("failed") || detail.includes("error")) {
+  if (hasError || hasNonZeroFailed) {
     return "error";
   }
 
@@ -256,11 +261,11 @@ function buildActivityLine(activity: ActivityResponse): string {
 }
 
 function defaultDownloadBrowserValue(options: Array<{ value: string }>): string {
-  if (options.some((option) => option.value === "chrome")) {
-    return "chrome";
+  if (options.some((option) => option.value === "round-robin")) {
+    return "round-robin";
   }
 
-  return options[0]?.value ?? "chrome";
+  return options[0]?.value ?? "round-robin";
 }
 
 function isUndownloadableError(message: string | null): boolean {
@@ -320,7 +325,7 @@ export function PlaylistsPage() {
   const [detailContentTab, setDetailContentTab] = useState<DetailContentTab>("settings");
   const [videoDownloadFilter, setVideoDownloadFilter] = useState<VideoDownloadFilter>("all");
   const [downloadBatchSize, setDownloadBatchSize] = useState("5");
-  const [downloadBrowser, setDownloadBrowser] = useState("chrome");
+  const [downloadBrowser, setDownloadBrowser] = useState("round-robin");
   const playlistListRef = useRef<HTMLDivElement | null>(null);
   const activityOverlayRef = useRef<HTMLElement | null>(null);
   const resizeSessionRef = useRef<{
@@ -688,7 +693,7 @@ export function PlaylistsPage() {
     await downloadVideo.mutateAsync({
       playlistId: selectedPlaylist.id,
       videoId,
-      cookiesBrowser: "chrome",
+      cookiesBrowser: preferredDownloadBrowser,
     });
   }
 
