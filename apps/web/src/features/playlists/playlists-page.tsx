@@ -65,7 +65,6 @@ type ActivityLogEntry = {
   isActive: boolean;
   createdAt: string;
   tone: "live" | "success" | "error" | "info";
-  phase: "start" | "success" | "failed" | "neutral";
   command: string;
 };
 
@@ -173,7 +172,7 @@ function buildActivityTitle(activity: ActivityResponse): string {
 }
 
 function buildActivityTone(activity: ActivityResponse): ActivityLogEntry["tone"] {
-  const detail = `${activity.message ?? ""} ${activity.video_title ?? ""}`.toLowerCase();
+  const detail = `${activity.message ?? ""}`.toLowerCase();
   const failedCountMatch = detail.match(/\bfailed\s+(\d+)\b/);
   const hasFailed = detail.includes("failed");
   const hasError = detail.includes("error");
@@ -190,7 +189,11 @@ function buildActivityTone(activity: ActivityResponse): ActivityLogEntry["tone"]
 
   if (
     !activity.is_active &&
-    (detail.includes("saved") || detail.includes("finished") || detail.includes("complete") || detail.includes("ready"))
+    (detail.includes("saved") ||
+      detail.includes("finished") ||
+      detail.includes("complete") ||
+      detail.includes("ready") ||
+      detail.includes("synced"))
   ) {
     return "success";
   }
@@ -200,20 +203,6 @@ function buildActivityTone(activity: ActivityResponse): ActivityLogEntry["tone"]
   }
 
   return "info";
-}
-
-function buildActivityPhase(activity: ActivityResponse): ActivityLogEntry["phase"] {
-  const detail = `${activity.message ?? ""}`.toLowerCase();
-  if (detail.includes("starting video download")) {
-    return "start";
-  }
-  if (detail.includes("success via")) {
-    return "success";
-  }
-  if (detail.includes("failed")) {
-    return "failed";
-  }
-  return "neutral";
 }
 
 function buildActivityCommand(activity: ActivityResponse): string {
@@ -393,7 +382,6 @@ export function PlaylistsPage() {
       isActive: entry.is_active,
       createdAt: entry.updated_at ?? entry.finished_at ?? entry.started_at ?? new Date().toISOString(),
       tone: buildActivityTone(entry),
-      phase: buildActivityPhase(entry),
       command: buildActivityCommand(entry),
     }));
   const [isActivityExpanded, setIsActivityExpanded] = useState(false);
@@ -769,7 +757,7 @@ export function PlaylistsPage() {
                   activityLog.map((entry) => (
                     <article
                       key={entry.key}
-                      className={`activity-log-entry activity-log-entry-${entry.tone} activity-log-entry-phase-${entry.phase} ${entry.isActive ? "is-live" : ""}`}
+                      className={`activity-log-entry activity-log-entry-${entry.tone} ${entry.isActive ? "is-live" : ""}`}
                     >
                       <span className="activity-log-time">{formatLogTime(entry.createdAt)}</span>
                       <span className="activity-log-prompt" aria-hidden="true">

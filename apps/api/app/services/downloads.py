@@ -152,13 +152,6 @@ def _download_videos(
                 current_browser_label = browser_label
                 start_message_browser = current_browser_label
 
-            activity_registry.update(
-                operation="download",
-                video_id=video.id,
-                video_title=video.title,
-                message=f"Starting video download...",
-                items_completed=index,
-            )
             logger.info(
                 "Downloading video %s/%s title=%s cookies_browser=%s",
                 index,

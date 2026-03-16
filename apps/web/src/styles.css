@@ -732,9 +732,9 @@ a {
   color: #99f6e4;
 }
 
-.activity-log-entry-phase-start {
-  border-color: rgba(45, 212, 191, 0.42);
-  background: rgba(8, 47, 73, 0.42);
+.activity-log-entry-live {
+  border-color: rgba(45, 212, 191, 0.34);
+  background: rgba(8, 47, 73, 0.32);
 }
 
 .activity-log-entry-success .activity-log-prompt {
@@ -761,16 +761,6 @@ a {
 .activity-log-entry-error {
   border-color: rgba(244, 63, 94, 0.32);
   background: rgba(76, 5, 25, 0.34);
-}
-
-.activity-log-entry-phase-failed {
-  border-color: rgba(244, 63, 94, 0.4);
-  background: rgba(76, 5, 25, 0.42);
-}
-
-.activity-log-entry-phase-success {
-  border-color: rgba(34, 197, 94, 0.34);
-  background: rgba(20, 83, 45, 0.34);
 }
 
 .activity-log-entry-info .activity-log-prompt {
