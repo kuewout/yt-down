@@ -9,6 +9,7 @@
   --accent-strong: #134e4a;
   --accent-soft: #c7efe9;
   --shadow: 0 16px 50px rgba(43, 34, 24, 0.12);
+  --overlay-bottom-offset: 34px;
   font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
 }
 
@@ -54,7 +55,7 @@ a {
   grid-template-rows: auto auto 1fr auto;
   gap: 14px;
   padding: 20px 16px;
-  padding-bottom: 92px;
+  padding-bottom: var(--overlay-bottom-offset);
   min-height: 100vh;
   height: 100vh;
   border-right: 1px solid rgba(53, 44, 34, 0.08);
@@ -496,7 +497,7 @@ a {
 .activity-overlay {
   position: fixed;
   right: 40px;
-  bottom: 34px;
+  bottom: var(--overlay-bottom-offset);
   z-index: 30;
   width: min(360px, calc(100vw - 32px));
   display: grid;
@@ -1572,6 +1573,10 @@ a {
 }
 
 @media (max-width: 860px) {
+  :root {
+    --overlay-bottom-offset: 20px;
+  }
+
   .app-shell {
     --sidebar-width: 0px;
     grid-template-columns: 1fr;
@@ -1605,7 +1610,7 @@ a {
 
   .activity-overlay {
     right: 20px;
-    bottom: 20px;
+    bottom: var(--overlay-bottom-offset);
   }
 
   .mobile-brand {
@@ -1727,6 +1732,10 @@ a {
 }
 
 @media (max-width: 560px) {
+  :root {
+    --overlay-bottom-offset: 12px;
+  }
+
   .content {
     padding: 14px;
   }
@@ -1757,7 +1766,7 @@ a {
   .activity-overlay {
     right: 12px;
     left: 12px;
-    bottom: 12px;
+    bottom: var(--overlay-bottom-offset);
     width: auto;
   }
 
