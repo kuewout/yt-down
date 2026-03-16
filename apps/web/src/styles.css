@@ -501,6 +501,7 @@ a {
   bottom: var(--overlay-bottom-offset);
   z-index: 30;
   width: min(360px, calc(100vw - var(--sidebar-width) - 72px));
+  max-width: calc(100vw - var(--sidebar-width) - 72px);
   display: grid;
   gap: 10px;
   padding: 16px 18px;
@@ -516,6 +517,7 @@ a {
     transform 140ms ease,
     box-shadow 140ms ease,
     border-color 140ms ease;
+  overflow: hidden;
 }
 
 .activity-overlay:hover {
@@ -541,7 +543,10 @@ a {
 }
 
 .activity-overlay-expanded {
-  width: min(420px, calc(100vw - 32px));
+  width: min(420px, calc(100vw - var(--sidebar-width) - 72px));
+  min-height: 180px;
+  max-height: calc(100vh - var(--overlay-bottom-offset) - 72px);
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .activity-overlay-live {
@@ -598,7 +603,9 @@ a {
 .activity-console {
   display: grid;
   gap: 8px;
-  max-height: 360px;
+  max-height: none;
+  min-height: 0;
+  height: 100%;
   overflow: auto;
   padding: 6px;
   border-radius: 18px;
@@ -627,6 +634,36 @@ a {
 .activity-collapsed-dot.is-live {
   background: var(--accent);
   box-shadow: 0 0 0 6px rgba(15, 118, 110, 0.12);
+}
+
+.activity-resize-handle {
+  position: absolute;
+  z-index: 2;
+  touch-action: none;
+}
+
+.activity-resize-handle-top {
+  top: 0;
+  left: 12px;
+  right: 12px;
+  height: 10px;
+  cursor: ns-resize;
+}
+
+.activity-resize-handle-right {
+  top: 12px;
+  right: 0;
+  bottom: 12px;
+  width: 10px;
+  cursor: ew-resize;
+}
+
+.activity-overlay-resizing-height {
+  cursor: ns-resize;
+}
+
+.activity-overlay-resizing-width {
+  cursor: ew-resize;
 }
 
 .activity-log-entry {
@@ -688,6 +725,7 @@ a {
   color: #94a3b8;
   font-size: 0.76rem;
   line-height: 1.45;
+  white-space: pre-line;
 }
 
 .activity-log-entry-live .activity-log-summary {
@@ -1614,6 +1652,7 @@ a {
     right: auto;
     bottom: var(--overlay-bottom-offset);
     width: min(360px, calc(100vw - 40px));
+    max-width: calc(100vw - 40px);
   }
 
   .mobile-brand {
@@ -1771,6 +1810,7 @@ a {
     right: auto;
     bottom: var(--overlay-bottom-offset);
     width: min(360px, calc(100vw - 28px));
+    max-width: calc(100vw - 28px);
   }
 
   .folder-path-row {

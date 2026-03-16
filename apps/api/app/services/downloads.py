@@ -266,7 +266,7 @@ def _download_videos(
         f"{browser}={count}" for browser, count in browser_usage.items()
     ) or "none"
     failure_detail = (
-        f"; failed items: {', '.join(failed_summaries[:3])}"
+        "; failed items:\n" + "\n".join(f"- {summary}" for summary in failed_summaries)
         if failed_summaries
         else ""
     )

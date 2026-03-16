@@ -1,4 +1,13 @@
-import { Dispatch, FormEvent, SetStateAction, useEffect, useState } from "react";
+import {
+  CSSProperties,
+  Dispatch,
+  FormEvent,
+  PointerEvent as ReactPointerEvent,
+  SetStateAction,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { ActivityResponse } from "../../api/client";
 import {
@@ -202,6 +211,32 @@ function buildActivityKey(activity: ActivityResponse): string {
   ].join(":");
 }
 
+function formatActivityMessage(message: string): string {
+  const marker = "; failed items:";
+  const markerIndex = message.indexOf(marker);
+  if (markerIndex === -1) {
+    return message;
+  }
+
+  const prefix = message.slice(0, markerIndex).trim();
+  const failuresRaw = message.slice(markerIndex + marker.length).trim();
+  if (!failuresRaw) {
+    return message;
+  }
+
+  if (failuresRaw.includes("\n")) {
+    return `${prefix}; failed items:\n${failuresRaw}`;
+  }
+
+  const failureEntries = failuresRaw.split(/,\s+(?=")/).map((entry) => entry.trim()).filter(Boolean);
+  if (!failureEntries.length) {
+    return message;
+  }
+
+  const numberedFailures = failureEntries.map((entry, index) => `${index + 1}. ${entry}`).join("\n");
+  return `${prefix}; failed items:\n${numberedFailures}`;
+}
+
 function buildActivityLine(activity: ActivityResponse): string {
   const parts: string[] = [];
 
@@ -214,7 +249,7 @@ function buildActivityLine(activity: ActivityResponse): string {
   }
 
   if (activity.message) {
-    parts.push(activity.message);
+    parts.push(formatActivityMessage(activity.message));
   }
 
   return parts.join("  ") || "Waiting for updates";
@@ -286,6 +321,17 @@ export function PlaylistsPage() {
   const [videoDownloadFilter, setVideoDownloadFilter] = useState<VideoDownloadFilter>("all");
   const [downloadBatchSize, setDownloadBatchSize] = useState("5");
   const [downloadBrowser, setDownloadBrowser] = useState("chrome");
+  const playlistListRef = useRef<HTMLDivElement | null>(null);
+  const activityOverlayRef = useRef<HTMLElement | null>(null);
+  const resizeSessionRef = useRef<{
+    axis: "width" | "height";
+    startX: number;
+    startY: number;
+    startWidth: number;
+    startHeight: number;
+    overlayLeft: number;
+    bottomOffset: number;
+  } | null>(null);
   const selectedVideos = usePlaylistVideos(selectedPlaylistId);
   const selectedPlaylist = data?.items.find((playlist) => playlist.id === selectedPlaylistId) ?? null;
   const selectedPlaylistSourceUrl = selectedPlaylist ? toPlaylistUrl(selectedPlaylist.source_url) : "";
@@ -320,6 +366,11 @@ export function PlaylistsPage() {
       command: buildActivityCommand(entry),
     }));
   const [isActivityExpanded, setIsActivityExpanded] = useState(false);
+  const [playlistListWidth, setPlaylistListWidth] = useState<number | null>(null);
+  const [isActivityWidthManual, setIsActivityWidthManual] = useState(false);
+  const [activityOverlayWidth, setActivityOverlayWidth] = useState<number | null>(null);
+  const [activityOverlayHeight, setActivityOverlayHeight] = useState<number | null>(null);
+  const [activityResizeAxis, setActivityResizeAxis] = useState<"width" | "height" | null>(null);
   const browserOptions = cookieBrowsers.data?.options ?? [];
   const preferredDownloadBrowser = defaultDownloadBrowserValue(browserOptions);
   const supportedBrowserValues = browserOptions.map((option) => option.value);
@@ -415,6 +466,115 @@ export function PlaylistsPage() {
       setIsActivityExpanded(true);
     }
   }, [activityData]);
+
+  useEffect(() => {
+    const element = playlistListRef.current;
+    if (!element) {
+      return;
+    }
+
+    const updateWidth = () => {
+      const measured = element.getBoundingClientRect().width;
+      if (measured > 0) {
+        setPlaylistListWidth(Math.round(measured));
+      }
+    };
+    updateWidth();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", updateWidth);
+      return () => window.removeEventListener("resize", updateWidth);
+    }
+
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!playlistListWidth || isActivityWidthManual) {
+      return;
+    }
+    setActivityOverlayWidth(playlistListWidth);
+  }, [playlistListWidth, isActivityWidthManual]);
+
+  useEffect(() => {
+    if (!activityResizeAxis) {
+      return;
+    }
+
+    function onPointerMove(event: PointerEvent) {
+      const session = resizeSessionRef.current;
+      if (!session) {
+        return;
+      }
+
+      event.preventDefault();
+      if (session.axis === "width") {
+        const minWidth = 280;
+        const maxWidth = Math.max(minWidth, Math.floor(window.innerWidth - session.overlayLeft - 14));
+        const nextWidth = session.startWidth + (event.clientX - session.startX);
+        const clampedWidth = Math.min(maxWidth, Math.max(minWidth, nextWidth));
+        setActivityOverlayWidth(clampedWidth);
+        setIsActivityWidthManual(true);
+        return;
+      }
+
+      const minHeight = 160;
+      const maxHeight = Math.max(minHeight, Math.floor(window.innerHeight - session.bottomOffset - 72));
+      const nextHeight = session.startHeight - (event.clientY - session.startY);
+      const clampedHeight = Math.min(maxHeight, Math.max(minHeight, nextHeight));
+      setActivityOverlayHeight(clampedHeight);
+    }
+
+    function onPointerEnd() {
+      resizeSessionRef.current = null;
+      setActivityResizeAxis(null);
+    }
+
+    window.addEventListener("pointermove", onPointerMove, { passive: false });
+    window.addEventListener("pointerup", onPointerEnd);
+    window.addEventListener("pointercancel", onPointerEnd);
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerEnd);
+      window.removeEventListener("pointercancel", onPointerEnd);
+    };
+  }, [activityResizeAxis]);
+
+  function getOverlayBottomOffsetPx() {
+    const value = getComputedStyle(document.documentElement).getPropertyValue("--overlay-bottom-offset").trim();
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 34;
+  }
+
+  function handleResizeStart(axis: "width" | "height") {
+    return (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!isActivityExpanded || !activityOverlayRef.current) {
+        return;
+      }
+
+      const rect = activityOverlayRef.current.getBoundingClientRect();
+      resizeSessionRef.current = {
+        axis,
+        startX: event.clientX,
+        startY: event.clientY,
+        startWidth: rect.width,
+        startHeight: rect.height,
+        overlayLeft: rect.left,
+        bottomOffset: getOverlayBottomOffsetPx(),
+      };
+      setActivityResizeAxis(axis);
+    };
+  }
+
+  const activityOverlayStyle: CSSProperties = {};
+  if (isActivityExpanded && activityOverlayWidth) {
+    activityOverlayStyle.width = `${Math.round(activityOverlayWidth)}px`;
+  }
+  if (isActivityExpanded && activityOverlayHeight) {
+    activityOverlayStyle.height = `${Math.round(activityOverlayHeight)}px`;
+  }
 
   function updateField<K extends keyof FormState>(field: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -537,10 +697,26 @@ export function PlaylistsPage() {
       <div className="playlist-page">
         {hasActivity && activityData && (
           <section
+            ref={activityOverlayRef}
             className={`activity-overlay ${activityData.is_active ? "activity-overlay-live" : ""} ${
               isActivityExpanded ? "activity-overlay-expanded" : "activity-overlay-collapsed"
-            }`}
+            } ${activityResizeAxis ? `activity-overlay-resizing-${activityResizeAxis}` : ""}`}
+            style={activityOverlayStyle}
           >
+            {isActivityExpanded && (
+              <>
+                <div
+                  className="activity-resize-handle activity-resize-handle-top"
+                  onPointerDown={handleResizeStart("height")}
+                  aria-hidden="true"
+                />
+                <div
+                  className="activity-resize-handle activity-resize-handle-right"
+                  onPointerDown={handleResizeStart("width")}
+                  aria-hidden="true"
+                />
+              </>
+            )}
             <div className="activity-overlay-header">
               <button
                 className="activity-overlay-toggle"
@@ -682,7 +858,7 @@ export function PlaylistsPage() {
             </p>
           )}
 
-          <div className="playlist-list">
+          <div className="playlist-list" ref={playlistListRef}>
             {visiblePlaylists.length ? (
               visiblePlaylists.map((playlist) => {
                 const stats = videoStatsByPlaylist.get(playlist.id) ?? { total: 0, downloaded: 0, failed: 0 };
