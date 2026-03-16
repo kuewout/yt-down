@@ -148,12 +148,14 @@ def sync_playlist(db: Session, playlist_id: UUID) -> SyncPlaylistResult:
     try:
         relink_result = relink_playlist_videos(db, playlist)
         activity_registry.update(
+            operation="sync",
             message=f"Matched local files: {relink_result.relinked_videos} relinked, {relink_result.unchanged_videos} already linked",
         )
 
-        activity_registry.update(message="Fetching playlist metadata")
+        activity_registry.update(operation="sync", message="Fetching playlist metadata")
         snapshot = fetch_flat_playlist(playlist.source_url)
         activity_registry.update(
+            operation="sync",
             playlist_title=snapshot.title,
             message=f"Processing {len(snapshot.entries)} playlist entries",
             items_total=len(snapshot.entries),
@@ -168,13 +170,14 @@ def sync_playlist(db: Session, playlist_id: UUID) -> SyncPlaylistResult:
         db.refresh(playlist)
         total_videos = len(list_playlist_videos(db, playlist.id))
     except Exception as exc:
-        activity_registry.fail(str(exc))
+        activity_registry.fail(str(exc), operation="sync")
         raise
 
     unmatched_display = ", ".join(relink_result.unmatched_local_files)
     if not unmatched_display:
         unmatched_display = "none"
     activity_registry.complete(
+        operation="sync",
         message=(
             f"Synced {playlist.title}: {created_count} new / {total_videos} total, "
             f"local matched {relink_result.matched_local_videos}/{relink_result.files_scanned}, "

@@ -25,8 +25,8 @@ async def stream_activity(request: Request) -> StreamingResponse:
             if await request.is_disconnected():
                 break
 
-            next_version, next_snapshot = await asyncio.to_thread(
-                activity_registry.wait_for_change, version, 15.0
+            next_version, next_snapshots = await asyncio.to_thread(
+                activity_registry.wait_for_changes, version, 15.0
             )
             if await request.is_disconnected():
                 break
@@ -36,8 +36,9 @@ async def stream_activity(request: Request) -> StreamingResponse:
                 continue
 
             version = next_version
-            payload = ActivityRead.model_validate(next_snapshot)
-            yield f"event: activity\ndata: {payload.model_dump_json()}\n\n"
+            for snapshot_item in next_snapshots:
+                payload = ActivityRead.model_validate(snapshot_item)
+                yield f"event: activity\ndata: {payload.model_dump_json()}\n\n"
 
     return StreamingResponse(
         event_stream(),

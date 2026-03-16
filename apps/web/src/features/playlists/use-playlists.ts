@@ -21,6 +21,9 @@ import {
   updatePlaylist,
 } from "../../api/client";
 
+const ACTIVITY_HISTORY_STORAGE_KEY = "yt-down:activity-history:v1";
+const ACTIVITY_HISTORY_LIMIT = 100;
+
 function buildActivityEventKey(activity: ActivityResponse): string {
   return [
     activity.updated_at ?? activity.finished_at ?? activity.started_at ?? "unknown",
@@ -30,6 +33,30 @@ function buildActivityEventKey(activity: ActivityResponse): string {
     activity.items_completed,
     activity.message ?? "",
   ].join(":");
+}
+
+function loadPersistedActivityEvents(): ActivityResponse[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(ACTIVITY_HISTORY_STORAGE_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.filter((item): item is ActivityResponse => {
+      return typeof item === "object" && item !== null && "operation" in item;
+    }).slice(0, ACTIVITY_HISTORY_LIMIT);
+  } catch {
+    return [];
+  }
 }
 
 export function usePlaylists() {
@@ -48,10 +75,11 @@ export function useCookieBrowsers() {
 }
 
 export function useActivity() {
-  const [data, setData] = useState<ActivityResponse | undefined>(undefined);
-  const [events, setEvents] = useState<ActivityResponse[]>([]);
+  const initialEvents = loadPersistedActivityEvents();
+  const [events, setEvents] = useState<ActivityResponse[]>(initialEvents);
+  const [data, setData] = useState<ActivityResponse | undefined>(initialEvents[0]);
   const [error, setError] = useState<Error | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(events.length === 0);
 
   useEffect(() => {
     let closed = false;
@@ -68,7 +96,7 @@ export function useActivity() {
           if (current.length && buildActivityEventKey(current[0]) === buildActivityEventKey(payload)) {
             return current;
           }
-          return [payload, ...current].slice(0, 120);
+          return [payload, ...current].slice(0, ACTIVITY_HISTORY_LIMIT);
         });
         setError(null);
         setIsLoading(false);
@@ -96,6 +124,18 @@ export function useActivity() {
       eventSource.close();
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(ACTIVITY_HISTORY_STORAGE_KEY, JSON.stringify(events.slice(0, ACTIVITY_HISTORY_LIMIT)));
+    } catch {
+      // Ignore storage errors to avoid breaking live activity updates.
+    }
+  }, [events]);
 
   return {
     data,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from threading import Condition
@@ -28,6 +29,7 @@ class ActivityRegistry:
         self._condition = Condition()
         self._snapshot = ActivitySnapshot()
         self._version = 0
+        self._history: deque[tuple[int, ActivitySnapshot]] = deque(maxlen=1000)
 
     def snapshot(self) -> ActivitySnapshot:
         with self._condition:
@@ -37,15 +39,26 @@ class ActivityRegistry:
         with self._condition:
             return self._version
 
-    def wait_for_change(
+    def wait_for_changes(
         self, version: int, timeout: float = 15.0
-    ) -> tuple[int, ActivitySnapshot]:
+    ) -> tuple[int, list[ActivitySnapshot]]:
         with self._condition:
             self._condition.wait_for(lambda: self._version != version, timeout=timeout)
-            return self._version, ActivitySnapshot(**self._snapshot.__dict__)
+            if self._version == version:
+                return version, []
+
+            snapshots = [
+                ActivitySnapshot(**snapshot.__dict__)
+                for snapshot_version, snapshot in self._history
+                if snapshot_version > version
+            ]
+            if not snapshots:
+                snapshots = [ActivitySnapshot(**self._snapshot.__dict__)]
+            return self._version, snapshots
 
     def _publish_locked(self) -> None:
         self._version += 1
+        self._history.append((self._version, ActivitySnapshot(**self._snapshot.__dict__)))
         self._condition.notify_all()
 
     def start(
@@ -77,6 +90,7 @@ class ActivityRegistry:
     def update(
         self,
         *,
+        operation: str | None = None,
         message: str | None = None,
         playlist_id: UUID | None = None,
         playlist_title: str | None = None,
@@ -87,6 +101,8 @@ class ActivityRegistry:
     ) -> None:
         now = datetime.now(UTC)
         with self._condition:
+            if operation is not None:
+                self._snapshot.operation = operation
             if playlist_id is not None:
                 self._snapshot.playlist_id = playlist_id
             if playlist_title is not None:
@@ -105,10 +121,16 @@ class ActivityRegistry:
             self._publish_locked()
 
     def complete(
-        self, *, message: str | None = None, items_completed: int | None = None
+        self,
+        *,
+        operation: str | None = None,
+        message: str | None = None,
+        items_completed: int | None = None,
     ) -> None:
         now = datetime.now(UTC)
         with self._condition:
+            if operation is not None:
+                self._snapshot.operation = operation
             self._snapshot.status = "succeeded"
             self._snapshot.is_active = False
             self._snapshot.message = message
@@ -120,9 +142,11 @@ class ActivityRegistry:
             self._snapshot.video_title = None
             self._publish_locked()
 
-    def fail(self, message: str) -> None:
+    def fail(self, message: str, *, operation: str | None = None) -> None:
         now = datetime.now(UTC)
         with self._condition:
+            if operation is not None:
+                self._snapshot.operation = operation
             self._snapshot.status = "failed"
             self._snapshot.is_active = False
             self._snapshot.message = message

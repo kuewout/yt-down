@@ -360,7 +360,7 @@ export function PlaylistsPage() {
   const hasActivity = Boolean(activityData && activityData.operation);
   const activityLog: ActivityLogEntry[] = (activity.events ?? [])
     .filter((entry) => Boolean(entry.operation))
-    .slice(0, 20)
+    .slice(0, 100)
     .map((entry) => ({
       key: buildActivityKey(entry),
       title: buildActivityTitle(entry),

@@ -53,6 +53,7 @@ def rescan_library(db: Session) -> LibraryRescanResult:
     try:
         for index, playlist in enumerate(playlists, start=1):
             activity_registry.update(
+                operation="rescan",
                 playlist_id=playlist.id,
                 playlist_title=playlist.title,
                 message=f"Scanning {playlist.title}",
@@ -64,14 +65,15 @@ def rescan_library(db: Session) -> LibraryRescanResult:
             missing_videos += result.missing_videos
             unchanged_videos += result.unchanged_videos
 
-            activity_registry.update(items_completed=index)
+            activity_registry.update(operation="rescan", items_completed=index)
 
         db.commit()
     except Exception as exc:
-        activity_registry.fail(str(exc))
+        activity_registry.fail(str(exc), operation="rescan")
         raise
 
     activity_registry.complete(
+        operation="rescan",
         message=f"Rescanned {len(playlists)} playlists and {files_scanned} files",
         items_completed=len(playlists),
     )

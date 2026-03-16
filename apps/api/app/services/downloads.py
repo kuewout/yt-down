@@ -149,6 +149,7 @@ def _download_videos(
                 start_message_browser = current_browser_label
 
             activity_registry.update(
+                operation="download",
                 video_id=video.id,
                 video_title=video.title,
                 message=f"Starting video {index}/{attempted_count} via {start_message_browser}",
@@ -244,6 +245,7 @@ def _download_videos(
                     error_message,
                 )
                 activity_registry.update(
+                    operation="download",
                     video_id=video.id,
                     video_title=video.title,
                     message=f"Failed video {index}/{attempted_count} via {current_browser_label}",
@@ -270,6 +272,7 @@ def _download_videos(
                 result.local_path,
             )
             activity_registry.update(
+                operation="download",
                 video_id=video.id,
                 video_title=video.title,
                 message=f"Saved video {index}/{attempted_count} via {current_browser_label}",
@@ -280,7 +283,7 @@ def _download_videos(
         db.commit()
         db.refresh(playlist)
     except Exception as exc:
-        activity_registry.fail(str(exc))
+        activity_registry.fail(str(exc), operation="download")
         raise
 
     browser_breakdown = ", ".join(
@@ -292,6 +295,7 @@ def _download_videos(
         else ""
     )
     activity_registry.complete(
+        operation="download",
         message=(
             f"Finished {attempted_count} item(s): saved {downloaded_count}, failed {failed_count}; "
             f"saved-by-browser [{browser_breakdown}]{failure_detail}"
