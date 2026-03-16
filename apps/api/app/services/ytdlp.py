@@ -8,6 +8,7 @@ from typing import Callable
 
 
 PROGRESS_LINE_RE = re.compile(r"^\[download\]\s+(?P<progress>.+)$")
+ROUND_ROBIN_COOKIES_BROWSER = "round-robin"
 
 
 class YtDlpError(RuntimeError):
@@ -93,12 +94,12 @@ def _supported_browser_labels() -> dict[str, str]:
 
 def list_available_cookie_browsers() -> BrowserAvailability:
     labels = _supported_browser_labels()
-    options = [
-        BrowserOption(value=value, label=label) for value, label in labels.items()
-    ]
+    options = [BrowserOption(value=value, label=label) for value, label in labels.items()]
 
     options.sort(key=lambda option: option.label.lower())
-    return BrowserAvailability(options=options)
+    return BrowserAvailability(
+        options=[BrowserOption(value=ROUND_ROBIN_COOKIES_BROWSER, label="Round-Robin"), *options]
+    )
 
 
 def _run_yt_dlp_command(
@@ -237,6 +238,7 @@ def download_video(
     cookies_browser: str | None = None,
     resolution_limit: int | None = None,
     progress_callback: Callable[[str], None] | None = None,
+    retry_without_cookies: bool = True,
 ) -> DownloadResult:
     cookies_browser = normalize_cookies_browser(cookies_browser)
     base_cmd = [
@@ -277,10 +279,11 @@ def download_video(
                 progress_callback=progress_callback,
             )
         except YtDlpError as exc:
+            if not retry_without_cookies:
+                raise
+
             try:
-                return _run_yt_dlp_command(
-                    base_cmd, progress_callback=progress_callback
-                )
+                return _run_yt_dlp_command(base_cmd, progress_callback=progress_callback)
             except YtDlpError:
                 raise YtDlpError(f"{exc} | retry without cookies also failed") from exc
 
