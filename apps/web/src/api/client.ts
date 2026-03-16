@@ -82,7 +82,6 @@ export type CookieBrowserOption = {
 
 export type CookieBrowserAvailabilityResponse = {
   options: CookieBrowserOption[];
-  unsupported_installed: string[];
 };
 
 export type SyncPlaylistResponse = {

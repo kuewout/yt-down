@@ -1,5 +1,4 @@
 import json
-import platform
 import re
 import subprocess
 from dataclasses import dataclass
@@ -9,21 +8,6 @@ from typing import Callable
 
 
 PROGRESS_LINE_RE = re.compile(r"^\[download\]\s+(?P<progress>.+)$")
-SUPPORTED_MACOS_BROWSER_APPS: dict[str, tuple[str, ...]] = {
-    "brave": ("Brave Browser.app",),
-    "chrome": ("Google Chrome.app", "Chrome.app"),
-    "chromium": ("Chromium.app",),
-    "edge": ("Microsoft Edge.app",),
-    "firefox": ("Firefox.app",),
-    "opera": ("Opera.app",),
-    "safari": ("Safari.app",),
-    "vivaldi": ("Vivaldi.app",),
-    "whale": ("Whale.app",),
-}
-UNSUPPORTED_MACOS_BROWSER_APPS: dict[str, tuple[str, ...]] = {
-    "Atlas": ("ChatGPT Atlas.app", "Atlas.app"),
-    "Comet": ("Comet.app",),
-}
 
 
 class YtDlpError(RuntimeError):
@@ -58,12 +42,7 @@ def normalize_cookies_browser(browser: str | None) -> str | None:
     if not browser:
         return None
 
-    normalized = browser.strip().lower()
-    aliases = {
-        "atlas": "chrome",
-        "comet": "chrome",
-    }
-    return aliases.get(normalized, normalized)
+    return browser.strip().lower()
 
 
 @dataclass(frozen=True)
@@ -75,7 +54,6 @@ class BrowserOption:
 @dataclass(frozen=True)
 class BrowserAvailability:
     options: list[BrowserOption]
-    unsupported_installed: list[str]
 
 
 def _build_format_selector(resolution_limit: int | None) -> str:
@@ -109,23 +87,9 @@ def list_available_cookie_browsers() -> BrowserAvailability:
     options = [
         BrowserOption(value=value, label=label) for value, label in labels.items()
     ]
-    unsupported_installed: list[str] = []
-
-    if platform.system() == "Darwin":
-        app_roots = [Path("/Applications"), Path.home() / "Applications"]
-        for label, app_names in UNSUPPORTED_MACOS_BROWSER_APPS.items():
-            if any(
-                (root / app_name).exists()
-                for root in app_roots
-                for app_name in app_names
-            ):
-                unsupported_installed.append(label)
 
     options.sort(key=lambda option: option.label.lower())
-    return BrowserAvailability(
-        options=options,
-        unsupported_installed=sorted(unsupported_installed),
-    )
+    return BrowserAvailability(options=options)
 
 
 def _run_yt_dlp_command(

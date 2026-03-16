@@ -803,12 +803,6 @@ export function PlaylistsPage() {
                   )}
                 </div>
               </div>
-              {cookieBrowsers.data?.unsupported_installed.length ? (
-                <p className="hint">
-                  Installed but not exposed by `yt-dlp`: {cookieBrowsers.data.unsupported_installed.join(", ")}.
-                </p>
-              ) : null}
-
               {activeTab === "overview" && (
                 <div className="detail-stack">
                   <section className="overview-grid">

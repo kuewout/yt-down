@@ -46,7 +46,6 @@ class BrowserOptionResponse(BaseModel):
 
 class CookieBrowserAvailabilityResponse(BaseModel):
     options: list[BrowserOptionResponse]
-    unsupported_installed: list[str]
 
 
 class PickFolderResponse(BaseModel):
@@ -68,8 +67,7 @@ def get_cookie_browsers() -> CookieBrowserAvailabilityResponse:
         options=[
             BrowserOptionResponse(value=option.value, label=option.label)
             for option in availability.options
-        ],
-        unsupported_installed=availability.unsupported_installed,
+        ]
     )
 
 
