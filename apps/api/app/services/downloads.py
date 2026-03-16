@@ -128,13 +128,14 @@ def _download_videos(
 
             requested_video_browser = requested_browser
             ordered_browsers: list[str] = []
+            round_robin_start = 0
             if is_round_robin:
                 if round_robin_browsers:
                     start = round_robin_index % len(round_robin_browsers)
+                    round_robin_start = start
                     ordered_browsers = (
                         round_robin_browsers[start:] + round_robin_browsers[:start]
                     )
-                    round_robin_index += 1
                     requested_video_browser = ordered_browsers[0]
                     current_browser_label = requested_video_browser
                 else:
@@ -159,8 +160,9 @@ def _download_videos(
             try:
                 if is_round_robin:
                     result = None
-                    last_unusable_error: YtDlpError | None = None
-                    for candidate in ordered_browsers:
+                    last_browser_error: YtDlpError | None = None
+                    successful_candidate_index: int | None = None
+                    for candidate_index, candidate in enumerate(ordered_browsers):
                         current_browser_label = candidate
                         try:
                             result = download_video(
@@ -171,18 +173,33 @@ def _download_videos(
                                 progress_callback=handle_progress,
                                 retry_without_cookies=False,
                             )
+                            successful_candidate_index = candidate_index
                             break
                         except YtDlpError as exc:
+                            last_browser_error = exc
                             if _is_unusable_browser_error(str(exc)):
-                                last_unusable_error = exc
                                 logger.info(
                                     "Skipping unusable cookies browser=%s for video=%s error=%s",
                                     candidate,
                                     video.title,
                                     str(exc),
                                 )
-                                continue
-                            raise
+                            else:
+                                logger.info(
+                                    "Cookies browser failed browser=%s for video=%s error=%s; trying next browser",
+                                    candidate,
+                                    video.title,
+                                    str(exc),
+                                )
+                            continue
+
+                    if ordered_browsers:
+                        if successful_candidate_index is not None:
+                            round_robin_index = (
+                                round_robin_start + successful_candidate_index + 1
+                            )
+                        else:
+                            round_robin_index = round_robin_start + 1
 
                     if result is None:
                         current_browser_label = "none"
@@ -195,9 +212,9 @@ def _download_videos(
                                 progress_callback=handle_progress,
                             )
                         except YtDlpError as exc:
-                            if last_unusable_error is not None:
+                            if last_browser_error is not None:
                                 raise YtDlpError(
-                                    f"{last_unusable_error} | no-cookies fallback failed: {exc}"
+                                    f"{last_browser_error} | no-cookies fallback failed: {exc}"
                                 ) from exc
                             raise
                 else:
