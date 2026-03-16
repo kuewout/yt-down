@@ -172,15 +172,30 @@ function buildActivityCommand(activity: ActivityResponse): string {
   return operation;
 }
 
+function buildActivityKey(activity: ActivityResponse): string {
+  return [
+    activity.updated_at ?? activity.finished_at ?? activity.started_at ?? "unknown",
+    activity.operation ?? "none",
+    activity.playlist_id ?? "none",
+    activity.video_id ?? "none",
+    activity.items_completed,
+    activity.message ?? "",
+  ].join(":");
+}
+
 function buildActivityLine(activity: ActivityResponse): string {
   const parts: string[] = [];
 
-  if (activity.message) {
-    parts.push(activity.message);
+  if (activity.items_total !== null) {
+    parts.push(`progress=${activity.items_completed}/${activity.items_total}`);
   }
 
   if (activity.video_title) {
     parts.push(`video="${activity.video_title}"`);
+  }
+
+  if (activity.message) {
+    parts.push(activity.message);
   }
 
   return parts.join("  ") || "Waiting for updates";
@@ -273,7 +288,18 @@ export function PlaylistsPage() {
     data?.items.filter((playlist) => (playlistFilter === "active" ? playlist.active : !playlist.active)) ?? [];
   const activityData = activity.data;
   const hasActivity = Boolean(activityData && activityData.operation);
-  const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([]);
+  const activityLog: ActivityLogEntry[] = (activity.events ?? [])
+    .filter((entry) => Boolean(entry.operation))
+    .slice(0, 20)
+    .map((entry) => ({
+      key: buildActivityKey(entry),
+      title: buildActivityTitle(entry),
+      detail: buildActivityLine(entry),
+      isActive: entry.is_active,
+      createdAt: entry.updated_at ?? entry.finished_at ?? entry.started_at ?? new Date().toISOString(),
+      tone: buildActivityTone(entry),
+      command: buildActivityCommand(entry),
+    }));
   const [isActivityExpanded, setIsActivityExpanded] = useState(false);
   const browserOptions = cookieBrowsers.data?.options ?? [];
   const preferredDownloadBrowser = defaultDownloadBrowserValue(browserOptions);
@@ -366,37 +392,7 @@ export function PlaylistsPage() {
   }, [cookieBrowsers.isSuccess, preferredDownloadBrowser, supportedBrowserKey]);
 
   useEffect(() => {
-    if (!activityData || !activityData.operation) {
-      return;
-    }
-
-    const key = [
-      activityData.updated_at ?? activityData.finished_at ?? activityData.started_at ?? "unknown",
-      activityData.operation,
-      activityData.playlist_id ?? "none",
-      activityData.video_id ?? "none",
-      activityData.items_completed,
-      activityData.message ?? "",
-    ].join(":");
-
-    const nextEntry: ActivityLogEntry = {
-      key,
-      title: buildActivityTitle(activityData),
-      detail: buildActivityLine(activityData),
-      isActive: activityData.is_active,
-      createdAt: activityData.updated_at ?? activityData.finished_at ?? activityData.started_at ?? new Date().toISOString(),
-      tone: buildActivityTone(activityData),
-      command: buildActivityCommand(activityData),
-    };
-
-    setActivityLog((current) => {
-      if (current[0]?.key === key || current.some((entry) => entry.key === key)) {
-        return current;
-      }
-      return [nextEntry, ...current].slice(0, 8);
-    });
-
-    if (activityData.is_active && activityData.operation.toLowerCase().includes("download")) {
+    if (activityData?.is_active && activityData.operation?.toLowerCase().includes("download")) {
       setIsActivityExpanded(true);
     }
   }, [activityData]);

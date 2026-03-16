@@ -21,6 +21,17 @@ import {
   updatePlaylist,
 } from "../../api/client";
 
+function buildActivityEventKey(activity: ActivityResponse): string {
+  return [
+    activity.updated_at ?? activity.finished_at ?? activity.started_at ?? "unknown",
+    activity.operation ?? "none",
+    activity.playlist_id ?? "none",
+    activity.video_id ?? "none",
+    activity.items_completed,
+    activity.message ?? "",
+  ].join(":");
+}
+
 export function usePlaylists() {
   return useQuery({
     queryKey: ["playlists"],
@@ -38,6 +49,7 @@ export function useCookieBrowsers() {
 
 export function useActivity() {
   const [data, setData] = useState<ActivityResponse | undefined>(undefined);
+  const [events, setEvents] = useState<ActivityResponse[]>([]);
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -52,6 +64,12 @@ export function useActivity() {
           return;
         }
         setData(payload);
+        setEvents((current) => {
+          if (current.length && buildActivityEventKey(current[0]) === buildActivityEventKey(payload)) {
+            return current;
+          }
+          return [payload, ...current].slice(0, 120);
+        });
         setError(null);
         setIsLoading(false);
       } catch (parseError) {
@@ -81,6 +99,7 @@ export function useActivity() {
 
   return {
     data,
+    events,
     error,
     isError: Boolean(error),
     isLoading,

@@ -1,4 +1,5 @@
 import logging
+from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID
@@ -86,16 +87,18 @@ def _download_videos(
             if option.value != ROUND_ROBIN_COOKIES_BROWSER
         ]
     browser_label = (
-        f"{ROUND_ROBIN_COOKIES_BROWSER} ({len(round_robin_browsers)})"
+        f"{ROUND_ROBIN_COOKIES_BROWSER} pool={len(round_robin_browsers)}"
         if is_round_robin
         else (resolved_browser or "none")
     )
+    browser_usage: Counter[str] = Counter()
+    failed_summaries: list[str] = []
 
     activity_registry.start(
         operation="download",
         playlist_id=playlist.id,
         playlist_title=playlist.title,
-        message=f"Preparing downloads with browser: {browser_label}",
+        message=f"Preparing {attempted_count} download(s) with cookies={browser_label}",
         items_total=attempted_count,
     )
     logger.info(
@@ -112,7 +115,6 @@ def _download_videos(
                 progress: str,
                 *,
                 current_index: int = index,
-                current_video_id=video.id,
                 current_video_title: str = video.title,
             ) -> None:
                 logger.info(
@@ -122,12 +124,6 @@ def _download_videos(
                     attempted_count,
                     current_browser_label,
                     progress,
-                )
-                activity_registry.update(
-                    video_id=current_video_id,
-                    video_title=current_video_title,
-                    message=f"{current_browser_label} {progress}",
-                    items_completed=current_index - 1,
                 )
 
             requested_video_browser = requested_browser
@@ -140,16 +136,17 @@ def _download_videos(
                     )
                     round_robin_index += 1
                     requested_video_browser = ordered_browsers[0]
+                    current_browser_label = requested_video_browser
                 else:
                     requested_video_browser = None
-                current_browser_label = ROUND_ROBIN_COOKIES_BROWSER
+                    current_browser_label = "none"
             else:
                 current_browser_label = browser_label
 
             activity_registry.update(
                 video_id=video.id,
                 video_title=video.title,
-                message=f"Starting via {current_browser_label}",
+                message=f"Starting video {index}/{attempted_count} via {current_browser_label}",
                 items_completed=index - 1,
             )
             logger.info(
@@ -231,6 +228,9 @@ def _download_videos(
                     message=f"Failed video {index}/{attempted_count} via {current_browser_label}",
                     items_completed=index,
                 )
+                failed_summaries.append(
+                    f'"{video.title}" via {current_browser_label}'
+                )
                 continue
 
             video.local_path = result.local_path
@@ -240,6 +240,7 @@ def _download_videos(
                 video.upload_date = result.upload_date.date()
             video.download_error = None
             downloaded_count += 1
+            browser_usage[current_browser_label] += 1
             logger.info(
                 "Downloaded video %s/%s title=%s path=%s",
                 index,
@@ -261,8 +262,19 @@ def _download_videos(
         activity_registry.fail(str(exc))
         raise
 
+    browser_breakdown = ", ".join(
+        f"{browser}={count}" for browser, count in browser_usage.items()
+    ) or "none"
+    failure_detail = (
+        f"; failed items: {', '.join(failed_summaries[:3])}"
+        if failed_summaries
+        else ""
+    )
     activity_registry.complete(
-        message=f"Finished via {browser_label}: saved {downloaded_count}, failed {failed_count}",
+        message=(
+            f"Finished {attempted_count} item(s): saved {downloaded_count}, failed {failed_count}; "
+            f"saved-by-browser [{browser_breakdown}]{failure_detail}"
+        ),
         items_completed=attempted_count,
     )
     return downloaded_count, failed_count, attempted_count
