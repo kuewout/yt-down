@@ -496,10 +496,11 @@ a {
 
 .activity-overlay {
   position: fixed;
-  right: 40px;
+  left: calc(var(--sidebar-width) + 36px);
+  right: auto;
   bottom: var(--overlay-bottom-offset);
   z-index: 30;
-  width: min(360px, calc(100vw - 32px));
+  width: min(360px, calc(100vw - var(--sidebar-width) - 72px));
   display: grid;
   gap: 10px;
   padding: 16px 18px;
@@ -1609,8 +1610,10 @@ a {
   }
 
   .activity-overlay {
-    right: 20px;
+    left: 20px;
+    right: auto;
     bottom: var(--overlay-bottom-offset);
+    width: min(360px, calc(100vw - 40px));
   }
 
   .mobile-brand {
@@ -1764,10 +1767,10 @@ a {
   }
 
   .activity-overlay {
-    right: 12px;
-    left: 12px;
+    left: 14px;
+    right: auto;
     bottom: var(--overlay-bottom-offset);
-    width: auto;
+    width: min(360px, calc(100vw - 28px));
   }
 
   .folder-path-row {
