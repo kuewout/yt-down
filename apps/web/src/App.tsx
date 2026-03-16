@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { NavLink, Route, Routes } from "react-router-dom";
 
 import { fetchHealth } from "./api/client";
@@ -149,8 +149,8 @@ function Navigation({
             {item.icon}
           </span>
           <span className="nav-copy">
-            <strong>{collapsed && !mobile ? item.shortLabel : item.label}</strong>
-            {(!collapsed || mobile) && <small>{item.description}</small>}
+            <strong>{item.label}</strong>
+            <small>{item.description}</small>
           </span>
         </NavLink>
       ))}
@@ -159,8 +159,27 @@ function Navigation({
 }
 
 export function App() {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
+    () => typeof window !== "undefined" && window.innerWidth <= 1180
+  );
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 1180px)");
+    const handler = (e: MediaQueryListEvent) => {
+      setIsSidebarCollapsed(e.matches);
+    };
+    
+    // Modern browsers use addEventListener
+    if (mql.addEventListener) {
+      mql.addEventListener("change", handler);
+      return () => mql.removeEventListener("change", handler);
+    } else {
+      // Fallback for older browsers
+      mql.addListener(handler);
+      return () => mql.removeListener(handler);
+    }
+  }, []);
 
   return (
     <div className={`app-shell ${isSidebarCollapsed ? "sidebar-collapsed" : ""}`}>
@@ -170,25 +189,21 @@ export function App() {
             <div className="brand-logo" aria-hidden="true">
               YD
             </div>
-            {!isSidebarCollapsed && (
-              <div className="brand-copy">
-                <span className="brand-kicker">yt-down</span>
-                <strong>Library Console</strong>
-              </div>
-            )}
+            <div className="brand-copy">
+              <span className="brand-kicker">yt-down</span>
+              <strong>Library Console</strong>
+            </div>
           </div>
         </div>
 
-        {!isSidebarCollapsed && <span className="nav-section-label">Workspace</span>}
+        <span className="nav-section-label">Workspace</span>
         <Navigation collapsed={isSidebarCollapsed} />
 
-        {!isSidebarCollapsed && (
-          <div className="sidebar-meta">
-            <span className="status-label">Library mode</span>
-            <strong>Local-first download control</strong>
-            <p className="hint">Playlists, sync status, and downloads stay one click away.</p>
-          </div>
-        )}
+        <div className="sidebar-meta">
+          <span className="status-label">Library mode</span>
+          <strong>Local-first download control</strong>
+          <p className="hint">Playlists, sync status, and downloads stay one click away.</p>
+        </div>
       </aside>
 
       <div className="desktop-rail-toggle-shell">
