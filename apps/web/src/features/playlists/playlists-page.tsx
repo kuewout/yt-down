@@ -592,7 +592,7 @@ export function PlaylistsPage() {
               <div className="eyebrow">Tracked playlists</div>
               <h1>Playlists</h1>
               <p className="lede">
-                Sync playlists and pull in new videos when they appear.
+                `Sync`会读取本地文件夹及线上列表，并自动发现新视频。
               </p>
             </div>
             <div className="playlist-rail-actions">
