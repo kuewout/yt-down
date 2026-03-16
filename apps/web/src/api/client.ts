@@ -196,6 +196,17 @@ export async function downloadNewVideos(
   });
 }
 
+export async function downloadVideo(
+  playlistId: string,
+  videoId: string,
+  cookiesBrowser: string | null,
+): Promise<DownloadNewResponse> {
+  return request<DownloadNewResponse>(`/playlists/${playlistId}/videos/${videoId}/download`, {
+    method: "POST",
+    body: JSON.stringify({ cookies_browser: cookiesBrowser }),
+  });
+}
+
 export async function updatePlaylist(
   playlistId: string,
   input: UpdatePlaylistInput,

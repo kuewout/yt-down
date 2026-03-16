@@ -60,35 +60,15 @@ def _is_unusable_browser_error(message: str) -> bool:
     return any(pattern in normalized for pattern in UNUSABLE_BROWSER_PATTERNS)
 
 
-def download_missing_videos(
+def _download_videos(
     db: Session,
-    playlist_id: UUID,
-    batch_size: int = 5,
+    playlist: Playlist,
+    videos: list[Video],
     cookies_browser: str | None = None,
-) -> tuple[Playlist, int, int, int]:
-    playlist = db.get(Playlist, playlist_id)
-    if playlist is None:
-        raise ValueError("Playlist not found")
-    if not playlist.active:
-        raise ValueError("Inactive playlists cannot download videos")
-
-    missing_videos = db.scalars(
-        select(Video)
-        .where(
-            Video.playlist_id == playlist_id,
-            Video.downloaded.is_(False),
-            or_(
-                Video.download_error.is_(None),
-                ~Video.download_error.like(f"{UNDOWNLOADABLE_PREFIX}%"),
-            ),
-        )
-        .order_by(Video.playlist_index.asc(), Video.created_at.asc())
-        .limit(batch_size)
-    ).all()
-
+) -> tuple[int, int, int]:
     downloaded_count = 0
     failed_count = 0
-    attempted_count = len(missing_videos)
+    attempted_count = len(videos)
     output_dir = Path(playlist.folder_path)
     output_dir.mkdir(parents=True, exist_ok=True)
     output_template = str(output_dir / "%(upload_date)s %(title)s.%(ext)s")
@@ -125,7 +105,7 @@ def download_missing_videos(
         browser_label,
     )
     try:
-        for index, video in enumerate(missing_videos, start=1):
+        for index, video in enumerate(videos, start=1):
             current_browser_label = browser_label
 
             def handle_progress(
@@ -155,7 +135,9 @@ def download_missing_videos(
             if is_round_robin:
                 if round_robin_browsers:
                     start = round_robin_index % len(round_robin_browsers)
-                    ordered_browsers = round_robin_browsers[start:] + round_robin_browsers[:start]
+                    ordered_browsers = (
+                        round_robin_browsers[start:] + round_robin_browsers[:start]
+                    )
                     round_robin_index += 1
                     requested_video_browser = ordered_browsers[0]
                 else:
@@ -283,4 +265,68 @@ def download_missing_videos(
         message=f"Finished via {browser_label}: saved {downloaded_count}, failed {failed_count}",
         items_completed=attempted_count,
     )
+    return downloaded_count, failed_count, attempted_count
+
+
+def download_missing_videos(
+    db: Session,
+    playlist_id: UUID,
+    batch_size: int = 5,
+    cookies_browser: str | None = None,
+) -> tuple[Playlist, int, int, int]:
+    playlist = db.get(Playlist, playlist_id)
+    if playlist is None:
+        raise ValueError("Playlist not found")
+    if not playlist.active:
+        raise ValueError("Inactive playlists cannot download videos")
+
+    missing_videos = db.scalars(
+        select(Video)
+        .where(
+            Video.playlist_id == playlist_id,
+            Video.downloaded.is_(False),
+            or_(
+                Video.download_error.is_(None),
+                ~Video.download_error.like(f"{UNDOWNLOADABLE_PREFIX}%"),
+            ),
+        )
+        .order_by(Video.playlist_index.asc(), Video.created_at.asc())
+        .limit(batch_size)
+    ).all()
+
+    downloaded_count, failed_count, attempted_count = _download_videos(
+        db=db,
+        playlist=playlist,
+        videos=missing_videos,
+        cookies_browser=cookies_browser,
+    )
     return playlist, downloaded_count, failed_count, attempted_count
+
+
+def download_single_video(
+    db: Session,
+    playlist_id: UUID,
+    video_id: UUID,
+    cookies_browser: str | None = None,
+) -> tuple[Playlist, Video, int, int, int]:
+    playlist = db.get(Playlist, playlist_id)
+    if playlist is None:
+        raise ValueError("Playlist not found")
+    if not playlist.active:
+        raise ValueError("Inactive playlists cannot download videos")
+
+    video = db.scalars(
+        select(Video).where(Video.id == video_id, Video.playlist_id == playlist_id)
+    ).first()
+    if video is None:
+        raise ValueError("Video not found")
+    if video.downloaded:
+        raise ValueError("Video already downloaded")
+
+    downloaded_count, failed_count, attempted_count = _download_videos(
+        db=db,
+        playlist=playlist,
+        videos=[video],
+        cookies_browser=cookies_browser,
+    )
+    return playlist, video, downloaded_count, failed_count, attempted_count

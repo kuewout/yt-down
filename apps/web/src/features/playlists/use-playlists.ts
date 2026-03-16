@@ -5,6 +5,7 @@ import {
   ACTIVITY_STREAM_URL,
   createPlaylist,
   deletePlaylist,
+  downloadVideo,
   downloadNewVideos,
   fetchCookieBrowsers,
   fetchPlaylistVideos,
@@ -140,6 +141,29 @@ export function useDownloadNewVideos() {
       batchSize: number;
       cookiesBrowser: string | null;
     }) => downloadNewVideos(playlistId, batchSize, cookiesBrowser),
+    onSuccess: async (_, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["playlists"] }),
+        queryClient.invalidateQueries({ queryKey: ["playlist-videos", variables.playlistId] }),
+        queryClient.invalidateQueries({ queryKey: ["videos"] }),
+      ]);
+    },
+  });
+}
+
+export function useDownloadVideo() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      playlistId,
+      videoId,
+      cookiesBrowser,
+    }: {
+      playlistId: string;
+      videoId: string;
+      cookiesBrowser: string | null;
+    }) => downloadVideo(playlistId, videoId, cookiesBrowser),
     onSuccess: async (_, variables) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["playlists"] }),

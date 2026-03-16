@@ -16,7 +16,7 @@ from app.schemas import (
     PlaylistRead,
     PlaylistUpdate,
 )
-from app.services.downloads import download_missing_videos
+from app.services.downloads import download_missing_videos, download_single_video
 from app.services.folder_picker import FolderPickerError, pick_directory
 from app.services.playlists import (
     YtDlpError,
@@ -219,6 +219,41 @@ def download_new_videos_route(
                 db,
                 playlist_id,
                 batch_size=payload.batch_size,
+                cookies_browser=payload.cookies_browser,
+            )
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    except YtDlpError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)
+        ) from exc
+
+    return {
+        "playlist_id": str(playlist.id),
+        "title": playlist.title,
+        "attempted_videos": attempted_count,
+        "downloaded_videos": downloaded_count,
+        "failed_videos": failed_count,
+    }
+
+
+@router.post("/{playlist_id}/videos/{video_id}/download")
+def download_single_video_route(
+    playlist_id: UUID,
+    video_id: UUID,
+    payload: DownloadNewRequest,
+    db: Session = Depends(get_db),
+) -> dict[str, str | int]:
+    try:
+        playlist, _, downloaded_count, failed_count, attempted_count = (
+            download_single_video(
+                db,
+                playlist_id=playlist_id,
+                video_id=video_id,
                 cookies_browser=payload.cookies_browser,
             )
         )

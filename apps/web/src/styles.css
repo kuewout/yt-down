@@ -1342,6 +1342,19 @@ a {
   flex-shrink: 0;
 }
 
+.video-row-actions {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.ad-hoc-download-button {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 0.82rem;
+}
+
 .compact-error {
   margin: 8px 0 0;
   font-size: 0.92rem;
@@ -1564,6 +1577,10 @@ a {
 
   .video-status {
     align-self: flex-start;
+  }
+
+  .video-row-actions {
+    justify-items: start;
   }
 
   .summary-action-button {

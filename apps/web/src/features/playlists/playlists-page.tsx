@@ -5,6 +5,7 @@ import {
   useActivity,
   useCookieBrowsers,
   useCreatePlaylist,
+  useDownloadVideo,
   useDeletePlaylist,
   useDownloadNewVideos,
   usePlaylistVideos,
@@ -235,6 +236,7 @@ export function PlaylistsPage() {
   const createPlaylist = useCreatePlaylist();
   const syncPlaylist = useSyncPlaylist();
   const downloadNewVideos = useDownloadNewVideos();
+  const downloadVideo = useDownloadVideo();
   const openPlaylistFolder = useOpenPlaylistFolder();
   const pickPlaylistFolder = usePickPlaylistFolder();
   const rescanLibrary = useRescanLibrary();
@@ -503,6 +505,18 @@ export function PlaylistsPage() {
     setIsDownloadModalOpen(false);
   }
 
+  async function handleAdHocDownload(videoId: string) {
+    if (!selectedPlaylist) {
+      return;
+    }
+
+    await downloadVideo.mutateAsync({
+      playlistId: selectedPlaylist.id,
+      videoId,
+      cookiesBrowser: "chrome",
+    });
+  }
+
   return (
     <>
       <div className="playlist-page">
@@ -726,6 +740,12 @@ export function PlaylistsPage() {
             <p className="error-text">
               Download failed:{" "}
               {downloadNewVideos.error instanceof Error ? downloadNewVideos.error.message : "Unknown error"}
+            </p>
+          )}
+          {downloadVideo.isError && (
+            <p className="error-text">
+              Ad-hoc download failed:{" "}
+              {downloadVideo.error instanceof Error ? downloadVideo.error.message : "Unknown error"}
             </p>
           )}
           {downloadNewVideos.data && (
@@ -1042,17 +1062,29 @@ export function PlaylistsPage() {
                             <p className="card-meta">{video.upload_date ? `${video.upload_date} · ${video.video_id}` : video.video_id}</p>
                             {video.download_error && <p className="error-text compact-error">{video.download_error}</p>}
                           </div>
-                          <span
-                            className={`pill video-status ${
-                              video.downloaded
-                                ? "downloaded-pill"
-                                : isUndownloadableError(video.download_error)
-                                  ? "failed-pill"
-                                  : ""
-                            }`}
-                          >
-                            {getVideoStatusLabel(video)}
-                          </span>
+                          <div className="video-row-actions">
+                            <span
+                              className={`pill video-status ${
+                                video.downloaded
+                                  ? "downloaded-pill"
+                                  : isUndownloadableError(video.download_error)
+                                    ? "failed-pill"
+                                    : ""
+                              }`}
+                            >
+                              {getVideoStatusLabel(video)}
+                            </span>
+                            {!video.downloaded && (
+                              <button
+                                className="secondary-button ad-hoc-download-button"
+                                type="button"
+                                disabled={downloadVideo.isPending}
+                                onClick={() => handleAdHocDownload(video.id)}
+                              >
+                                {downloadVideo.isPending ? "Downloading..." : "Ad-hoc download"}
+                              </button>
+                            )}
+                          </div>
                         </article>
                       ))
                     ) : (
