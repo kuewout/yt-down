@@ -27,6 +27,7 @@ type FormState = {
 
 type PlaylistFilter = "active" | "inactive";
 type DetailContentTab = "settings" | "videos";
+type VideoDownloadFilter = "all" | "downloaded" | "not-downloaded";
 type ActivityLogEntry = {
   key: string;
   title: string;
@@ -246,6 +247,7 @@ export function PlaylistsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const [detailContentTab, setDetailContentTab] = useState<DetailContentTab>("settings");
+  const [videoDownloadFilter, setVideoDownloadFilter] = useState<VideoDownloadFilter>("all");
   const [downloadBatchSize, setDownloadBatchSize] = useState("5");
   const [downloadBrowser, setDownloadBrowser] = useState("chrome");
   const selectedVideos = usePlaylistVideos(selectedPlaylistId);
@@ -289,6 +291,17 @@ export function PlaylistsPage() {
   const downloadableVideos = sortedSelectedVideos.filter(
     (video) => !video.downloaded && !isUndownloadableError(video.download_error),
   );
+  const filteredSelectedVideos = sortedSelectedVideos.filter((video) => {
+    if (videoDownloadFilter === "downloaded") {
+      return video.downloaded;
+    }
+
+    if (videoDownloadFilter === "not-downloaded") {
+      return !video.downloaded;
+    }
+
+    return true;
+  });
   const nextBatchVideos = downloadableVideos.slice(0, Number(downloadBatchSize));
 
   videos.data?.items.forEach((video) => {
@@ -335,6 +348,10 @@ export function PlaylistsPage() {
     if (selectedPlaylistId) {
       setDetailContentTab("settings");
     }
+  }, [selectedPlaylistId]);
+
+  useEffect(() => {
+    setVideoDownloadFilter("all");
   }, [selectedPlaylistId]);
 
   useEffect(() => {
@@ -980,6 +997,35 @@ export function PlaylistsPage() {
                   <div className="summary-inline-row">
                     <span className="status-label">Video list</span>
                   </div>
+                  <div className="filter-row detail-video-filter-row" role="tablist" aria-label="Video download filter">
+                    <button
+                      className={`filter-chip ${videoDownloadFilter === "all" ? "active" : ""}`}
+                      type="button"
+                      role="tab"
+                      aria-selected={videoDownloadFilter === "all"}
+                      onClick={() => setVideoDownloadFilter("all")}
+                    >
+                      All ({sortedSelectedVideos.length})
+                    </button>
+                    <button
+                      className={`filter-chip ${videoDownloadFilter === "downloaded" ? "active" : ""}`}
+                      type="button"
+                      role="tab"
+                      aria-selected={videoDownloadFilter === "downloaded"}
+                      onClick={() => setVideoDownloadFilter("downloaded")}
+                    >
+                      Downloaded ({downloadedCount})
+                    </button>
+                    <button
+                      className={`filter-chip ${videoDownloadFilter === "not-downloaded" ? "active" : ""}`}
+                      type="button"
+                      role="tab"
+                      aria-selected={videoDownloadFilter === "not-downloaded"}
+                      onClick={() => setVideoDownloadFilter("not-downloaded")}
+                    >
+                      Not downloaded ({Math.max(0, totalVideosCount - downloadedCount)})
+                    </button>
+                  </div>
                   {selectedVideos.isLoading && <p className="hint">Loading videos...</p>}
                   {selectedVideos.isError && (
                     <p className="error-text">
@@ -988,8 +1034,8 @@ export function PlaylistsPage() {
                     </p>
                   )}
                   <div className="video-list detail-video-list">
-                    {sortedSelectedVideos.length ? (
-                      sortedSelectedVideos.map((video) => (
+                    {filteredSelectedVideos.length ? (
+                      filteredSelectedVideos.map((video) => (
                         <article className="video-row" key={video.id}>
                           <div className="video-row-main">
                             <strong>{video.title}</strong>
@@ -1010,7 +1056,13 @@ export function PlaylistsPage() {
                         </article>
                       ))
                     ) : (
-                      !selectedVideos.isLoading && <p className="hint">No videos synced for this playlist yet.</p>
+                      !selectedVideos.isLoading && (
+                        <p className="hint">
+                          {sortedSelectedVideos.length
+                            ? "No videos match the selected filter."
+                            : "No videos synced for this playlist yet."}
+                        </p>
+                      )
                     )}
                   </div>
                 </div>

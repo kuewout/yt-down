@@ -1292,8 +1292,13 @@ a {
 
 .detail-video-list {
   max-height: 520px;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding-right: 4px;
+}
+
+.detail-video-filter-row {
+  margin-top: 12px;
 }
 
 .tab-panel {
@@ -1312,6 +1317,7 @@ a {
   justify-content: space-between;
   gap: 16px;
   align-items: start;
+  min-width: 0;
   padding: 14px 16px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.58);
@@ -1322,9 +1328,14 @@ a {
 }
 
 .video-row-main strong,
+.video-row-main .card-meta,
+.video-row-main .compact-error,
 .card-link,
 .card-meta {
+  display: block;
+  white-space: normal;
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .video-status {
