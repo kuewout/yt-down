@@ -347,10 +347,10 @@ a {
 }
 
 .playlist-page {
-  display: grid;
-  grid-template-columns: minmax(340px, 0.88fr) minmax(620px, 1.32fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 24px;
-  align-items: start;
+  align-items: flex-start;
   position: relative;
 }
 
@@ -696,8 +696,12 @@ a {
 }
 
 .playlist-rail {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 18px;
+  flex: 1 1 340px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .playlist-rail-header {
@@ -1067,10 +1071,14 @@ a {
 }
 
 .detail-panel {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 18px;
   position: sticky;
   top: 36px;
+  flex: 1.5 1 440px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .detail-hero {
