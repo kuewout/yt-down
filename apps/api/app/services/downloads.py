@@ -294,6 +294,11 @@ def _download_videos(
     browser_breakdown = ", ".join(
         f"{browser}={count}" for browser, count in browser_usage.items()
     ) or "none"
+    skipped_unusable_detail = (
+        f"; skipped-unusable [{', '.join(sorted(unusable_round_robin_browsers))}]"
+        if unusable_round_robin_browsers
+        else ""
+    )
     failure_detail = (
         "; failed items:\n" + "\n".join(f"- {summary}" for summary in failed_summaries)
         if failed_summaries
@@ -303,7 +308,7 @@ def _download_videos(
         operation="download",
         message=(
             f"Finished {attempted_count} item(s): saved {downloaded_count}, failed {failed_count}; "
-            f"saved-by-browser [{browser_breakdown}]{failure_detail}"
+            f"saved-by-browser [{browser_breakdown}]{skipped_unusable_detail}{failure_detail}"
         ),
         items_completed=attempted_count,
     )

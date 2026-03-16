@@ -59,6 +59,7 @@ type DetailContentTab = "settings" | "videos";
 type VideoDownloadFilter = "all" | "downloaded" | "not-downloaded";
 type ActivityLogEntry = {
   key: string;
+  operation: string;
   title: string;
   detail: string | null;
   isActive: boolean;
@@ -236,6 +237,12 @@ function buildActivityKey(activity: ActivityResponse): string {
   ].join(":");
 }
 
+function shouldHideActivityEntry(activity: ActivityResponse): boolean {
+  const operation = activity.operation?.trim().toLowerCase() ?? "";
+  const message = activity.message?.trim().toLowerCase() ?? "";
+  return operation === "download" && message.startsWith("preparing ") && message.includes("download(s) with cookies=");
+}
+
 function formatActivityMessage(message: string): string {
   const marker = "; failed items:";
   const markerIndex = message.indexOf(marker);
@@ -266,7 +273,7 @@ function buildActivityLine(activity: ActivityResponse): string {
   const parts: string[] = [];
 
   if (activity.items_total !== null) {
-    parts.push(`progress=${activity.items_completed}/${activity.items_total}`);
+    parts.push(`${activity.items_completed}/${activity.items_total}`);
   }
 
   if (activity.message) {
@@ -376,9 +383,11 @@ export function PlaylistsPage() {
   const hasActivity = Boolean(activityData && activityData.operation);
   const activityLog: ActivityLogEntry[] = (activity.events ?? [])
     .filter((entry) => Boolean(entry.operation))
+    .filter((entry) => !shouldHideActivityEntry(entry))
     .slice(0, 100)
     .map((entry) => ({
       key: buildActivityKey(entry),
+      operation: entry.operation ?? "",
       title: buildActivityTitle(entry),
       detail: buildActivityLine(entry),
       isActive: entry.is_active,
@@ -767,8 +776,12 @@ export function PlaylistsPage() {
                         {entry.tone === "error" ? "!" : entry.tone === "success" ? "#" : "$"}
                       </span>
                       <div className="activity-log-copy">
-                        <strong>{entry.command}</strong>
-                        <p className="activity-log-summary">{entry.title}</p>
+                        {entry.operation !== "download" && (
+                          <>
+                            <strong>{entry.command}</strong>
+                            <p className="activity-log-summary">{entry.title}</p>
+                          </>
+                        )}
                         {entry.detail && <p className="activity-log-detail">{entry.detail}</p>}
                       </div>
                     </article>
