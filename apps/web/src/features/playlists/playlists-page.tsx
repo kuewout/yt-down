@@ -64,6 +64,7 @@ type ActivityLogEntry = {
   isActive: boolean;
   createdAt: string;
   tone: "live" | "success" | "error" | "info";
+  phase: "start" | "success" | "failed" | "neutral";
   command: string;
 };
 
@@ -157,6 +158,7 @@ function formatLogTime(timestamp: string): string {
   return value.toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   });
 }
 
@@ -181,6 +183,10 @@ function buildActivityTone(activity: ActivityResponse): ActivityLogEntry["tone"]
     return "error";
   }
 
+  if (detail.includes("success via")) {
+    return "success";
+  }
+
   if (
     !activity.is_active &&
     (detail.includes("saved") || detail.includes("finished") || detail.includes("complete") || detail.includes("ready"))
@@ -193,6 +199,20 @@ function buildActivityTone(activity: ActivityResponse): ActivityLogEntry["tone"]
   }
 
   return "info";
+}
+
+function buildActivityPhase(activity: ActivityResponse): ActivityLogEntry["phase"] {
+  const detail = `${activity.message ?? ""}`.toLowerCase();
+  if (detail.includes("starting video download")) {
+    return "start";
+  }
+  if (detail.includes("success via")) {
+    return "success";
+  }
+  if (detail.includes("failed")) {
+    return "failed";
+  }
+  return "neutral";
 }
 
 function buildActivityCommand(activity: ActivityResponse): string {
@@ -247,10 +267,6 @@ function buildActivityLine(activity: ActivityResponse): string {
 
   if (activity.items_total !== null) {
     parts.push(`progress=${activity.items_completed}/${activity.items_total}`);
-  }
-
-  if (activity.video_title) {
-    parts.push(`video="${activity.video_title}"`);
   }
 
   if (activity.message) {
@@ -368,6 +384,7 @@ export function PlaylistsPage() {
       isActive: entry.is_active,
       createdAt: entry.updated_at ?? entry.finished_at ?? entry.started_at ?? new Date().toISOString(),
       tone: buildActivityTone(entry),
+      phase: buildActivityPhase(entry),
       command: buildActivityCommand(entry),
     }));
   const [isActivityExpanded, setIsActivityExpanded] = useState(false);
@@ -743,7 +760,7 @@ export function PlaylistsPage() {
                   activityLog.map((entry) => (
                     <article
                       key={entry.key}
-                      className={`activity-log-entry activity-log-entry-${entry.tone} ${entry.isActive ? "is-live" : ""}`}
+                      className={`activity-log-entry activity-log-entry-${entry.tone} activity-log-entry-phase-${entry.phase} ${entry.isActive ? "is-live" : ""}`}
                     >
                       <span className="activity-log-time">{formatLogTime(entry.createdAt)}</span>
                       <span className="activity-log-prompt" aria-hidden="true">

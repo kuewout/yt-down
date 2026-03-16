@@ -156,7 +156,7 @@ def _download_videos(
                 operation="download",
                 video_id=video.id,
                 video_title=video.title,
-                message=f"Starting video {index}/{attempted_count} via {start_message_browser}",
+                message=f"Starting video download...",
                 items_completed=index,
             )
             logger.info(
@@ -280,7 +280,7 @@ def _download_videos(
                 operation="download",
                 video_id=video.id,
                 video_title=video.title,
-                message=f"Saved video {index}/{attempted_count} via {current_browser_label}",
+                message=f"Success via {current_browser_label}: [{video.title}]",
                 items_completed=index,
             )
 
